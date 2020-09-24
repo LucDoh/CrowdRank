@@ -1,5 +1,11 @@
-# exclude everything
+# exclude everything in data
 data/*
 
 # exception to the rule
 !data/.gitkeep 
+
+# exclude vscode settings folder
+.vscode/*
+
+#Exclude this
+.ipynb_checkpoints/
