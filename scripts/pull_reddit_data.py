@@ -5,67 +5,14 @@ import nltk
 from collections import Counter
 import sys
 
-# Add functions which will pull data, eventually pushing to S3
-
-def get_comments_save(subreddit_list, file_out="results.txt"):
-    results = get_submissions(subreddit_list)
-    with open(file_out,'w') as f:
-        f.write(json.dumps(results))
-    
-
-def get_submissions(subreddit_list):
-    # Get a related submission and then all comments, e.g for advice/recommendations on headphones
-    prod_list_from_srs = []
-    # A) Get all posts in the subreddit headphones in the last year include the words best, advice, recommendations
-    # Potentially parallelizable
-
-    nlp = spacy.load("en_core_web_md")
-    nlp.add_pipe(nlp.create_pipe('sentencizer'))
-
-    for sr in subreddit_list:
-        # This will only grab up to 100 posts, to get the rest need to:
-        # Get the created_utc parameter from the last item in the results and send a new request using that as a before parameter.
-        h_page = requests.get('http://api.pushshift.io/reddit/search/submission/?subreddit={}&q=best+advice+recommendations&before=360d'.format(sr))
-        # Put all this data on S3
-
-        h_data = json.loads(h_page.text)
-        agg_prod_list = get_cmted_prods_submissions(h_data, nlp)
-        # Get associated comments, paste this in S3
-
-        prod_list_from_srs.extend(agg_prod_list)
-    
-    return Counter([p.lower() for p in prod_list_from_srs]).most_common()
-
-
-def get_assoc_comments(d):
-    ''' Using a submission JSON, return a new JSON of all comments.'''
-    c_page = requests.get('https://api.pushshift.io/reddit/submission/comment_ids/{}'.format(d['id']))
-    c_data = json.loads(c_page.text)
-    
-    cs_page = requests.get('https://api.pushshift.io/reddit/comment/search?ids={}'.format(",".join(c_data['data'])))
-    cs_data = json.loads(cs_page.text)
-    
-    return(cs_data['data'])
-
-def get_cmted_prods_submissions(submissions_data, nlp):
-    '''This takes in the JSON data returned from a query to a specific subreddit, 
-    gets all associated comments and then returns an aggregate "product-list" from
-    all this comment data.'''
-    all_likely_products = []
-    agg_product_list = []
-    total_comments = 0
-    for h_d in submissions_data['data']:
-        comments = get_assoc_comments(h_d) #d
-        total_comments += len(comments)
-        for c in comments:
-            agg_product_list.extend(get_prod_orgs(c['body'], nlp))
-            
-    print("Comments = {}".format(total_comments))
-    
-    return agg_product_list
 
 #####################
 #### Diff script
+
+
+### Should add a class here which describes our search
+# and from which methods are run?
+### Attributes: kw_1, kw_2, subreddit_1, subreddit_2, time_range
 
 def get_ents(text):
     '''Returns all entities, and their labels.'''
@@ -144,6 +91,65 @@ def multisubreddit_products():
     return Counter([p.lower() for p in prod_list_from_srs]).most_common()
 
 #########
+# Add functions which will pull data, eventually pushing to S3
+
+def get_comments_save(subreddit_list, file_out="results.txt"):
+    results = get_submissions(subreddit_list)
+    with open(file_out,'w') as f:
+        f.write(json.dumps(results))
+    
+
+def get_submissions(subreddit_list):
+    # Get a related submission and then all comments, e.g for advice/recommendations on headphones
+    prod_list_from_srs = []
+    # A) Get all posts in the subreddit headphones in the last year include the words best, advice, recommendations
+    # Potentially parallelizable
+
+    nlp = spacy.load("en_core_web_md")
+    nlp.add_pipe(nlp.create_pipe('sentencizer'))
+
+    for sr in subreddit_list:
+        # This will only grab up to 100 posts, to get the rest need to:
+        # Get the created_utc parameter from the last item in the results and send a new request using that as a before parameter.
+        h_page = requests.get('http://api.pushshift.io/reddit/search/submission/?subreddit={}&q=best+advice+recommendations&before=360d'.format(sr))
+        # Put all this data on S3
+
+        h_data = json.loads(h_page.text)
+        agg_prod_list = get_cmted_prods_submissions(h_data, nlp)
+        # Get associated comments, paste this in S3
+
+        prod_list_from_srs.extend(agg_prod_list)
+    
+    return Counter([p.lower() for p in prod_list_from_srs]).most_common()
+
+
+def get_assoc_comments(d):
+    ''' Using a submission JSON, return a new JSON of all comments.'''
+    c_page = requests.get('https://api.pushshift.io/reddit/submission/comment_ids/{}'.format(d['id']))
+    c_data = json.loads(c_page.text)
+    
+    cs_page = requests.get('https://api.pushshift.io/reddit/comment/search?ids={}'.format(",".join(c_data['data'])))
+    cs_data = json.loads(cs_page.text)
+    
+    return(cs_data['data'])
+
+def get_cmted_prods_submissions(submissions_data, nlp):
+    '''This takes in the JSON data returned from a query to a specific subreddit, 
+    gets all associated comments and then returns an aggregate "product-list" from
+    all this comment data.'''
+    all_likely_products = []
+    agg_product_list = []
+    total_comments = 0
+    for h_d in submissions_data['data']:
+        comments = get_assoc_comments(h_d) #d
+        total_comments += len(comments)
+        for c in comments:
+            agg_product_list.extend(get_prod_orgs(c['body'], nlp))
+            
+    print("Comments = {}".format(total_comments))
+    
+    return agg_product_list
+
 
 
 

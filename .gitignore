@@ -7,5 +7,5 @@ data/*
 # exclude vscode settings folder
 .vscode/*
 
-#Exclude this
-.ipynb_checkpoints/
+# exclude this
+.ipynb_checkpoints/*
