@@ -1,14 +1,29 @@
 import sys
 import json
+import pandas as pd
 from fuzzywuzzy import fuzz
 from collections import Counter
+
+
+
+def combine_scorevectors(vec_1, vec_2):
+    # score_1 = (e_1, s_1, a_1), score_2 = (e_2, s_2, a_2)
+    
+    # If vec_1 and vec_2 correspond to the same entity, i.e.
+    # if(score_1[0] == score_2[0])
+    
+    total_agreements = vec_1[2] + vec_2[2]
+    normed_sentiment = (vec_1[1]*vec_1[2] + vec_2[1]*vec_2[2])/total_agreements
+
+    combined_vector = (vec_1[0], normed_sentiment, total_agreements)
+    return combined_vector
 
 
 def remove_improbable_entities(results, cutoff = 3):
     '''Here we simply remove entities we consider improbable
     to be products/brand-names which will contribute to falsey increasing
     the number of mentions.  E.g. if less than 3 characters (dm, eq, tx)'''
-    # Could also remove links from amazon, which will give amazon credit for its products
+    # Should remove links from Amazon, which give amazon undue credit.
     new_results = []
     for r in results:
         if len(r[0]) >= cutoff:
@@ -33,7 +48,6 @@ def combine_like_entities(results, n = 3):
         running_score += r[1]
         for r2 in results[last_considered_brand:]:
             if fuzz.partial_ratio(r[0], r2[0]) >= 95:
-                #print(r[0], r2[0])
                 running_score += r2[1]
         
         sum_scores.append(running_score)
@@ -47,8 +61,8 @@ def combine_like_entities(results, n = 3):
 
 
 def fuzzy_matching(list_of_strs):
-    '''A function for testing fuzzy_matching. Note: there are faster
-    ways to check string similarity, like python-Levenshtein (C)'''
+    '''Test function for fuzzy_matching. A faster way to 
+    compute string similarity is likely python-Levenshtein (C)'''
 
     str_a, str_b, str_c = "hi", "hi there", "aasshiadsd"
     r = fuzz.ratio(str_a, str_b)
@@ -59,7 +73,8 @@ def fuzzy_matching(list_of_strs):
 
 
 def postprocess_results(results, known_brands):
-    '''Takes in list of (product, # of occurences), and outputs a ranking of the entities'''
+    '''Takes in list of (product, # of occurences)
+    Outputs'''
     results = remove_improbable_entities(results)
     processed_results = combine_like_entities(results)
     print(processed_results)
@@ -70,7 +85,50 @@ def postprocess_results(results, known_brands):
             result_dict[r[0]] = r[1]
     
     return Counter(result_dict)
+
+
+def postprocess_sentimentful_results(results, known_brands):
+    '''Takes in list of (product, sentiment, agreement),
+    then performs similar operations as postprocess.'''
+    results_filepath = "../data/interpreted_data/{}_{}.json".format(subreddit, lookback_days)
+    with open(results_filepath, 'r') as f:
+        results = json.loads(f.readlines()[0])
+    load_results(subreddit, lookback_days)
+    #results = remove_improbable_entities(results)
+
+    #processed_results = combine_like_entities(results)
+    return
+
+
+def postprocess(subreddit, lookback_days = 360):
+    '''Postprocessing includes: fuzzy string matching,
+    removing 1 and 2 letter entities, and uses a list of
+    brands to make the final ranking.'''
+
+    results_filepath = "../data/interpreted_data/{}_{}.json".format(subreddit, lookback_days)
+    with open(results_filepath, 'r') as f:
+        results = json.loads(f.readlines()[0])
+
+    print("Number of entities: {}".format(len(results)))
+    results = list(results)
+    # results are in the form [["sony", 12], ..., ["wip",1]]
+
+    known_brands = [] 
+    with open("../data/product_data/brands.txt", 'r') as f:
+        known_brands = [line[:-1] for line in f]
     
+    ranking = postprocess_results(results, known_brands)
+    df = pd.DataFrame(ranking)
+    df.columns = ["Brand", "Mentions"]
+
+    print(ranking)
+
+    out_path = "../data/results/{}_{}.csv"
+    df.to_csv(out_path, index=False)
+        
+    return df
+
+
 def main():
 
     results_filepath = str(sys.argv[1])
@@ -78,7 +136,7 @@ def main():
         results = json.loads(f.readlines()[0])
     print(len(results)) 
     results = list(results)
-    # results are in the form [["sony", 12], ..., ["wip",1]]
+    
 
     known_brands = [] 
     with open("../data/product_data/brands.txt", 'r') as f:
@@ -95,3 +153,5 @@ def main():
 
 if __name__=="__main__":
     main()
+
+
