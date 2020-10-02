@@ -102,8 +102,10 @@ def get_local(sr, lookback_days = 360):
     for i in range(len(comments_2D)):
         for comment in comments_2D[i]:
             comments.append(comment['body'])
-            comments_upvotes.append((comment['body'], comment['score']))
-
+            try:
+                comments_upvotes.append((comment['body'], comment['score']))
+            except KeyError:
+                comments_upvotes.append((comment['body'], 1))
     #return comments
     return comments_upvotes
 

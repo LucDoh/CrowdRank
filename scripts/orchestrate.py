@@ -28,12 +28,12 @@ if __name__=='__main__':
     if subreddit != "":
         # subreddit = st.sidebar.selectbox('Which subreddit?', ('headphoneadvice', 'BuildaPC', 'Smartphones'))
         data_load_state = st.text("Loading Reddit data...")
-        num_posts = 10
-        out_file = reddata_getter.get_recent_posts([subreddit], num_posts)
+        num_posts = 500
+        #out_file = reddata_getter.get_recent_posts([subreddit], num_posts)
         comments = interpreter.get_and_interpret(subreddit)
-        #ranking = postprocessing.postprocess(subreddit)
-
-        st.write(comments)
+        df_ranking = postprocessing.postprocess(subreddit)
+        print(df_ranking)
+        st.write(df_ranking)
 
         #st.table(df)
     data_load_state.text("Done interpreting comments from {}".format(subreddit))

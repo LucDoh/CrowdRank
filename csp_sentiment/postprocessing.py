@@ -3,15 +3,18 @@ import json
 import pandas as pd
 from fuzzywuzzy import fuzz
 from collections import Counter
+from emoji import UNICODE_EMOJI
 
+def is_emoji(s):
+    return s in UNICODE_EMOJI
+
+
+# Need to add a class to make processing step more clear.
 
 
 def combine_scorevectors(vec_1, vec_2):
-    # score_1 = (e_1, s_1, a_1), score_2 = (e_2, s_2, a_2)
-    
-    # If vec_1 and vec_2 correspond to the same entity, i.e.
-    # if(score_1[0] == score_2[0])
-    
+    '''Combining two entity-score vectors,
+    e.g. vec_1 = (e_1, s_1, a_1), vec_2 = (e_2, s_2, a_2)'''
     total_agreements = vec_1[2] + vec_2[2]
     normed_sentiment = (vec_1[1]*vec_1[2] + vec_2[1]*vec_2[2])/total_agreements
 
@@ -59,6 +62,65 @@ def combine_like_entities(results, n = 3):
     combined_results = [(r[0], sum_scores[i]) for i, r in enumerate(results[:last_considered_brand])]
     return combined_results
 
+def aggregate_score(tuples):
+    # Tuples are a list of [(sentiment_0, agreement_0),...]
+    print(tuples)
+    unscaled_sentiment = 0
+    total_votes = 0
+    if not tuples:
+        return (0, 0, 0)
+    for tuple in tuples:
+        total_votes += tuple[1]
+        unscaled_sentiment += tuple[0]*tuple[1]
+    mean_score = unscaled_sentiment/total_votes
+
+    # Get variance (two-pass method)
+    variance_numerator = 0
+    for tuple in tuples:
+        variance_numerator += tuple[1]*((mean_score - unscaled_sentiment)**2)
+    score_variance = variance_numerator/total_votes
+    
+    return (mean_score, total_votes, score_variance)
+
+def apply_aggregate_scoring(entity_score_dict):
+    scored_entities = {}
+    for key, val in entity_score_dict.items():
+        scored_entities[key] = aggregate_score(val)
+
+    return scored_entities
+
+def check_match(entity_1, entity_2, threshold = 95):
+    return fuzz.partial_ratio(entity_1, entity_2) >= threshold
+
+def combine_sentimentful_entities(results, top_entities):
+    '''Combines mentions of like-entities using fuzzy matching,
+    and adds together their scores via weighted averages. Also
+    gives variance...'''
+
+    # Construct a dictionary so that we can keep track of 
+    # all these scores and do thorough scoring after
+    entity_score_dict = {}
+
+    for entity in top_entities:
+        entity_score_dict[entity] = []
+        for r in results:
+            # If they match, add sentiment-agreement tuple to list
+            if(check_match(entity, r[0])):
+                entity_score_dict[entity].append((r[1], r[2]))
+
+    # In theory, after all this we should have a dict whose keys
+    # are entity strings and whose values are lists of sentiment-agreement 
+    # tuples. e.g. entity_score_dict['sony'] = [(0.05, 10), (0.1, 2), (-0.4, 3)]
+
+    # Now, let's define a function which will collapse the values of these dicts
+    # into a tuple: (mean_sentiment, total_agreements, sentiment_variance)
+    
+    scored_entities = apply_aggregate_scoring(entity_score_dict)
+
+
+
+    return scored_entities
+
 
 def fuzzy_matching(list_of_strs):
     '''Test function for fuzzy_matching. A faster way to 
@@ -71,6 +133,12 @@ def fuzzy_matching(list_of_strs):
     r4 = fuzz.partial_ratio(str_a, str_c)
     print(r, r2, r3, r4)
 
+def confirm_known_brands(results, known_brands):
+    result_dict = {}
+    for r in results:
+        if r[0] in set(known_brands):
+            result_dict[r[0]] = r[1]
+    return result_dict
 
 def postprocess_results(results, known_brands):
     '''Takes in list of (product, # of occurences)
@@ -79,25 +147,34 @@ def postprocess_results(results, known_brands):
     processed_results = combine_like_entities(results)
     print(processed_results)
 
-    result_dict = {}
-    for r in processed_results:
-        if r[0] in set(known_brands):
-            result_dict[r[0]] = r[1]
+    result_dict = confirm_known_brands(processed_results, known_brands)
     
     return Counter(result_dict)
+
+def get_top_entities(results, fraction = 0.2):
+    entities = [r[0].lower() for r in results]
+    entity_counter = Counter(entities).most_common()
+    # Get top 20% as seed brands
+    top_entities = [e[0] for e in entity_counter[:len(entity_counter)//int(1/fraction)]]
+    return top_entities
 
 
 def postprocess_sentimentful_results(results, known_brands):
     '''Takes in list of (product, sentiment, agreement),
     then performs similar operations as postprocess.'''
-    results_filepath = "../data/interpreted_data/{}_{}.json".format(subreddit, lookback_days)
-    with open(results_filepath, 'r') as f:
-        results = json.loads(f.readlines()[0])
-    load_results(subreddit, lookback_days)
-    #results = remove_improbable_entities(results)
+    
+    # Should have at least 3 characters to be a brand. 
+    results = remove_improbable_entities(results, cutoff = 3)
+    top_entities = get_top_entities(results)
+    scored_entities = combine_sentimentful_entities(results, top_entities)
 
+    # Combine entities which have extreme string similarity (sennheiser, sennheizer sr500)
     #processed_results = combine_like_entities(results)
-    return
+    
+    #Finally, check if these keys correspond to known_brands
+    confirmed_scored_entities = {key: scored_entities[key] for key in scored_entities.keys() if key in known_brands}
+
+    return confirmed_scored_entities #scored_entities
 
 
 def postprocess(subreddit, lookback_days = 360):
@@ -117,14 +194,18 @@ def postprocess(subreddit, lookback_days = 360):
     with open("../data/product_data/brands.txt", 'r') as f:
         known_brands = [line[:-1] for line in f]
     
-    ranking = postprocess_results(results, known_brands)
-    df = pd.DataFrame(ranking)
-    df.columns = ["Brand", "Mentions"]
+    #ranking = postprocess_results(results, known_brands)
+    ranking = postprocess_sentimentful_results(results, known_brands)
+    df = pd.DataFrame.from_dict(ranking, orient='index')
+    df.columns = ['Sentiment', 'Popularity', 'Variance']
+    df = df.sort_values(by=['Sentiment'], ascending=False)
+    #df = pd.DataFrame(ranking)
+    #df.columns = ["Brand", "Mentions"]
 
-    print(ranking)
+    #print(ranking)
 
     out_path = "../data/results/{}_{}.csv"
-    df.to_csv(out_path, index=False)
+    df.to_csv(out_path)
         
     return df
 
