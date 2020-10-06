@@ -5,6 +5,7 @@ import nltk
 from collections import Counter
 import sys
 
+
 def get_assoc_comments(d):
     ''' Using a submission JSON, return a new JSON of all comments.'''
     c_page = requests.get('https://api.pushshift.io/reddit/submission/comment_ids/{}'.format(d['id']))
@@ -17,7 +18,7 @@ def get_assoc_comments(d):
 
 def get_and_dump(subreddit, num_posts, lookback_days = 360, dumppath = '../data/'):
     print("Looking at {}".format(subreddit))
-    h_page = requests.get('http://api.pushshift.io/reddit/search/submission/?subreddit={}&q=best+advice+recommendations&before={}d&size={}'.format(subreddit,lookback_days, num_posts))
+    h_page = requests.get('http://api.pushshift.io/reddit/search/submission/?subreddit={}&q=best+advice+recommendations&before={}d&size={}&sort_type=score'.format(subreddit,lookback_days, num_posts))
     
     # TBA: Put all this data on S3
     # Save submissions for later
@@ -45,6 +46,24 @@ def get_recent_posts(subreddits, num_posts = 500):
     for sr in subreddits:
         print("For {}, comments in {}".format(sr, get_and_dump(sr, num_posts)))
 
+def keyword_subreddit_mapping(keyword):
+    '''For a keyword (electronics category), return the
+    top 1-3 subreddits for it. In the future, this should be 
+    done through a model so it generalizes. For now, just support
+    these.'''
+    kw_sr_map = {'Headphones': ['headphoneadvice', 'audiophile', 'budgetaudiophile'],
+    'Laptops': ['laptops', 'suggestalaptop', 'laptopdeals'],
+    'Computers': ['computers', 'suggestapc', 'pcmasterrace'],
+    'Keyboards': ['mechanicalkeyboards', 'keyboards', 'mechanicalkeyboardsUK'],
+    'Mouses' : ['MouseReview'],
+    'Monitors': ['Monitors'],
+    'Tvs' : ['Televisions'],
+    'Tablets': ['Tablets', 'androidtablets', 'ipad'],
+    'Smartwatches' : ['smartwatch', 'androidwear', 'ioswear']
+    }
+
+
+    return kw_sr_map[keyword]
 
 def main():
     ''' Taking in 3 subreddits, this script queries pushshift.io 

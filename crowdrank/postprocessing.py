@@ -142,7 +142,8 @@ def confirm_known_brands(results, known_brands):
 
 def postprocess_results(results, known_brands):
     '''Takes in list of (product, # of occurences)
-    Outputs'''
+    Outputs popularity ranking... This is the original
+    version of postprocess_sentimentful_results.'''
     results = remove_improbable_entities(results)
     processed_results = combine_like_entities(results)
     print(processed_results)
@@ -159,7 +160,7 @@ def get_top_entities(results, fraction = 0.2):
     return top_entities
 
 
-def postprocess_sentimentful_results(results, known_brands):
+def postprocess_sentimentful_results(results, xref, known_brands):
     '''Takes in list of (product, sentiment, agreement),
     then performs similar operations as postprocess.'''
     
@@ -172,12 +173,13 @@ def postprocess_sentimentful_results(results, known_brands):
     #processed_results = combine_like_entities(results)
     
     #Finally, check if these keys correspond to known_brands
-    confirmed_scored_entities = {key: scored_entities[key] for key in scored_entities.keys() if key in known_brands}
+    if xref:
+        scored_entities = {key: scored_entities[key] for key in scored_entities.keys() if key in known_brands}
 
-    return confirmed_scored_entities #scored_entities
+    return scored_entities #scored_entities
 
 
-def postprocess(subreddit, lookback_days = 360):
+def postprocess(subreddit, xref = True, lookback_days = 360):
     '''Postprocessing includes: fuzzy string matching,
     removing 1 and 2 letter entities, and uses a list of
     brands to make the final ranking.'''
@@ -187,15 +189,13 @@ def postprocess(subreddit, lookback_days = 360):
         results = json.loads(f.readlines()[0])
 
     print("Number of entities: {}".format(len(results)))
-    results = list(results)
-    # results are in the form [["sony", 12], ..., ["wip",1]]
+    results = list(results) # [["sony", 12], ..., ["wip",1]]
 
     known_brands = [] 
     with open("../data/product_data/brands.txt", 'r') as f:
         known_brands = [line[:-1] for line in f]
     
-    #ranking = postprocess_results(results, known_brands)
-    ranking = postprocess_sentimentful_results(results, known_brands)
+    ranking = postprocess_sentimentful_results(results, xref, known_brands)
     df = pd.DataFrame.from_dict(ranking, orient='index')
     df.columns = ['Sentiment', 'Popularity', 'Variance']
     df = df.sort_values(by=['Sentiment'], ascending=False)
@@ -208,6 +208,13 @@ def postprocess(subreddit, lookback_days = 360):
     df.to_csv(out_path)
         
     return df
+
+def postprocess_multisubreddit(subreddits, xref = True, lookback_days = 360):
+    ''' Support multiple subreddits...'''
+
+
+    return #df
+
 
 
 def main():
