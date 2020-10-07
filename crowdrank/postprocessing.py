@@ -21,6 +21,8 @@ def combine_scorevectors(vec_1, vec_2):
     combined_vector = (vec_1[0], normed_sentiment, total_agreements)
     return combined_vector
 
+def check_match(entity_1, entity_2, threshold = 95):
+    return fuzz.partial_ratio(entity_1, entity_2) >= threshold
 
 def remove_improbable_entities(results, cutoff = 3):
     '''Here we simply remove entities we consider improbable
@@ -72,6 +74,10 @@ def aggregate_score(tuples):
     for tuple in tuples:
         total_votes += tuple[1]
         unscaled_sentiment += tuple[0]*tuple[1]
+
+    if total_votes == 0:
+        total_votes = 1 # Keep their opinion if 1 downvote
+
     mean_score = unscaled_sentiment/total_votes
 
     # Get variance (two-pass method)
@@ -89,8 +95,6 @@ def apply_aggregate_scoring(entity_score_dict):
 
     return scored_entities
 
-def check_match(entity_1, entity_2, threshold = 95):
-    return fuzz.partial_ratio(entity_1, entity_2) >= threshold
 
 def combine_sentimentful_entities(results, top_entities):
     '''Combines mentions of like-entities using fuzzy matching,
@@ -179,12 +183,12 @@ def postprocess_sentimentful_results(results, xref, known_brands):
     return scored_entities #scored_entities
 
 
-def postprocess(subreddit, xref = True, lookback_days = 360):
+def postprocess(keyword, xref = True, lookback_days = 360): #(subreddit, xref = True, lookback_days = 360):
     '''Postprocessing includes: fuzzy string matching,
     removing 1 and 2 letter entities, and uses a list of
     brands to make the final ranking.'''
 
-    results_filepath = "../data/interpreted_data/{}_{}.json".format(subreddit, lookback_days)
+    results_filepath = "../data/interpreted_data/{}_{}.json".format(keyword, lookback_days)
     with open(results_filepath, 'r') as f:
         results = json.loads(f.readlines()[0])
 
@@ -196,23 +200,22 @@ def postprocess(subreddit, xref = True, lookback_days = 360):
         known_brands = [line[:-1] for line in f]
     
     ranking = postprocess_sentimentful_results(results, xref, known_brands)
+
+    # Dataframe work
     df = pd.DataFrame.from_dict(ranking, orient='index')
     df.columns = ['Sentiment', 'Popularity', 'Variance']
     df = df.sort_values(by=['Sentiment'], ascending=False)
-    #df = pd.DataFrame(ranking)
-    #df.columns = ["Brand", "Mentions"]
+    df = df.round({'Sentiment' : 2, 'Variance': 2})
 
     #print(ranking)
 
-    out_path = "../data/results/{}_{}.csv"
+    out_path = "../data/results/{}_{}.csv".format(keyword, lookback_days)
     df.to_csv(out_path)
         
     return df
 
 def postprocess_multisubreddit(subreddits, xref = True, lookback_days = 360):
-    ''' Support multiple subreddits...'''
-
-
+    ''' Support multiple subreddits... May not be necessary based on refactor.'''
     return #df
 
 

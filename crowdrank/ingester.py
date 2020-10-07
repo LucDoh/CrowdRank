@@ -6,6 +6,8 @@ from collections import Counter
 import sys
 
 
+# Ingestion handler object would make this cleaner.
+
 def get_assoc_comments(d):
     ''' Using a submission JSON, return a new JSON of all comments.'''
     c_page = requests.get('https://api.pushshift.io/reddit/submission/comment_ids/{}'.format(d['id']))
@@ -20,7 +22,7 @@ def get_and_dump(subreddit, num_posts, lookback_days = 360, dumppath = '../data/
     print("Looking at {}".format(subreddit))
     h_page = requests.get('http://api.pushshift.io/reddit/search/submission/?subreddit={}&q=best+advice+recommendations&before={}d&size={}&sort_type=score'.format(subreddit,lookback_days, num_posts))
     
-    # TBA: Put all this data on S3
+    # TBD: Put all this data on S3
     # Save submissions for later
     out_file = dumppath + "{}/{}_{}.{}".format("submission_data", subreddit, lookback_days, "json")
     submissions_data = json.loads(h_page.text)
@@ -28,8 +30,8 @@ def get_and_dump(subreddit, num_posts, lookback_days = 360, dumppath = '../data/
         json.dump(submissions_data, f)
 
 
-    comment_list = []
     # Iterate thru submissions, get associated comments
+    comment_list = []
     for h_d in submissions_data['data']:
         comments = get_assoc_comments(h_d)
         comment_list.append(comments)
@@ -41,17 +43,15 @@ def get_and_dump(subreddit, num_posts, lookback_days = 360, dumppath = '../data/
     
     return out_file
 
+    
 
-def get_recent_posts(subreddits, num_posts = 500):
-    for sr in subreddits:
-        print("For {}, comments in {}".format(sr, get_and_dump(sr, num_posts)))
-
-def keyword_subreddit_mapping(keyword):
-    '''For a keyword (electronics category), return the
-    top 1-3 subreddits for it. In the future, this should be 
-    done through a model so it generalizes. For now, just support
-    these.'''
-    kw_sr_map = {'Headphones': ['headphoneadvice', 'audiophile', 'budgetaudiophile'],
+def keyword_to_subreddits(keyword):
+    '''For a keyword (electronics category), return the top 
+    1-3 subreddits for it. In the future, this would be done by
+    a model (compare similarity of keyword to subreddit description) 
+    so it generalizes. For now, just support these.'''
+    kw_to_subreddits = { 
+    'Headphones': ['headphoneadvice', 'audiophile', 'budgetaudiophile'],
     'Laptops': ['laptops', 'suggestalaptop', 'laptopdeals'],
     'Computers': ['computers', 'suggestapc', 'pcmasterrace'],
     'Keyboards': ['mechanicalkeyboards', 'keyboards', 'mechanicalkeyboardsUK'],
@@ -62,8 +62,18 @@ def keyword_subreddit_mapping(keyword):
     'Smartwatches' : ['smartwatch', 'androidwear', 'ioswear']
     }
 
+    return kw_to_subreddits[keyword]
 
-    return kw_sr_map[keyword]
+'''def get_recent_posts(subreddits, num_posts = 500):
+    for sr in subreddits:
+        print("For {}, comments in {}".format(sr, get_and_dump(sr, num_posts)))'''
+
+def get_recent_posts(keyword, num_posts = 500):
+    # Supports keyword --> multiple subreddits
+    subreddits = keyword_to_subreddits(keyword)
+    for sr in subreddits:
+        print("For {}, comments in {}".format(sr, get_and_dump(sr, num_posts)))
+    return subreddits
 
 def main():
     ''' Taking in 3 subreddits, this script queries pushshift.io 

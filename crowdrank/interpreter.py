@@ -6,15 +6,17 @@ from collections import Counter
 import sys
 
 class Knowledgebase():
+    '''Class for interpreting "Knowledgebase", which 
+    is a list of (comment_text, upvotes) tuples'''
     def __init__(self, comments):
-        # comments is now [(text_i, upvotes_i),...]
+        # comments = [(text_0, upvotes_0),...]
         self.comments = comments
         self.prod_sentiments = []
     
     def interpret(self):
         nlp = spacy.load("en_core_web_md")
         nlp.add_pipe(nlp.create_pipe('sentencizer'))
-        # For each comment, get all products mentioned
+        # For each comment, get products mentioned
         products = []
         for c in self.comments:
             products.extend(interpret_text(c[0], nlp))
@@ -23,14 +25,20 @@ class Knowledgebase():
         self.prod_mentions = Counter([p.lower() for p in products]).most_common()
         return self.prod_mentions
 
-    def interpret_with_sentiment(self):
+    def interpret_with_sentiment(self, context = 'narrow'):
+        '''Advanced version of interpret(), which
+        uses a sentencizer and VADER to also get
+        sentiment associated with brand mentions.'''
         nlp = spacy.load("en_core_web_md")
         nlp.add_pipe(nlp.create_pipe('sentencizer'))
         # For each comment, make a list of tuples (prod_i, sentiment_i)
         product_sentiments = []
         for c in self.comments:
              # (Entity_i, sentiment_i, agreement_i)
-            product_sentiments.extend(interpret_paragraph(c, nlp))
+            if context == 'narrow':
+                product_sentiments.extend(interpret_paragraph(c, nlp))
+            else:
+                product_sentiments.extend(interpret_paragraph_widecontext(c, nlp))
 
         # products_sentiments = [("Apple", 0.5, 1), ("Bose", -0.4, 9), ...]
 
@@ -70,6 +78,21 @@ def interpret_paragraph(comment, nlp):
 
     return prods_sentiments
 
+def interpret_paragraph_widecontext(comment, nlp):
+    ''' Identical to interpret_paragraph() with one
+    key difference, sentiment is taken from the entire
+    post. This is important when people's sentiment
+    is not contained in the sentence where they mention
+    a product. (Often) '''
+    prods_sentiments = []
+    doc = nlp(comment[0])
+    sentiment_score = analyze_sentence_sentiment(comment[0])
+    for ent in doc.ents:
+        if ent.label == 383 or ent.label == 386:
+                    prods_sentiments.append((ent.text.lower(), sentiment_score, comment[1]))
+    
+    return prods_sentiments
+
 def interpret_text(text, nlp):
     ''' This extracts product/org names using spaCy NER.'''
 
@@ -86,8 +109,6 @@ def interpret_text(text, nlp):
 
 
 def get_local(sr, lookback_days = 360):
-    # Get submissions?
-    
     # Get comments
     comments_path = "../data/comment_data/{}_{}.json".format(sr, lookback_days)
     # List of lists of JSON objects (which are comment objects)
@@ -109,26 +130,26 @@ def get_local(sr, lookback_days = 360):
     #return comments
     return comments_upvotes
 
-def get_and_interpret(sr, lookback_days = 360):
+def get_and_interpret(subreddits, keyword, lookback_days = 360): 
 
-    # 1) Load comments (only text, no metadata)
-    #comments = get_local(sr, lookback_days)
-    comments_upvotes = get_local(sr, lookback_days)
+    # TODO: Make this able to handle arbitrary numbers of 
+    # subreddits...
 
-    # 2) Build knowledge object from list of comments
+    # 1) Load comments and comment scores
+    comments_upvotes = []
+    for sr in subreddits:
+        comments_upvotes.extend(get_local(sr, lookback_days))
+
+    # 2) Build knowledgebase from list of comments
     kb = Knowledgebase(comments_upvotes)
     print("Comments analyzed: {}".format(len(kb.comments)))
 
-    #3) Extract product names, coun=t for scores (and sentiment)
-    # Need to bring in the upvote number!
-    prod_mentions = kb.interpret()
-    prod_sentiments = kb.interpret_with_sentiment()
-    #print(len(prod_mentions))
+    #3) Extract product names and sentiments towards them
+    prod_sentiments = kb.interpret_with_sentiment(context='wide')
     print("Number of entities found: {}".format(len(prod_sentiments)))
     
-    # Add features to results s.t. [(e_00, s_00, a_00), ... (e_Nm, s_Nm, a_Nm)]
-    #4) Save results
-    file_out = "../data/interpreted_data/{}_{}.json".format(sr, lookback_days)
+    #4) Save results, in the form [(e_00, s_00, a_00), ... (e_Nm, s_Nm, a_Nm)]
+    file_out = "../data/interpreted_data/{}_{}.json".format(keyword, lookback_days)
     with open(file_out,'w') as f:
         json.dump(prod_sentiments, f)
 
