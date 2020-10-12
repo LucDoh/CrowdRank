@@ -6,8 +6,8 @@ from collections import Counter
 import sys
 
 class Knowledgebase():
-    '''Class for interpreting "Knowledgebase", which 
-    is a list of (comment_text, upvotes) tuples'''
+    '''Class for interpreting knowledge stored in 
+    comments, constructed from a list of (comment_text, upvotes).'''
     def __init__(self, comments):
         # comments = [(text_0, upvotes_0),...]
         self.comments = comments
@@ -35,10 +35,11 @@ class Knowledgebase():
         product_sentiments = []
         for c in self.comments:
              # (Entity_i, sentiment_i, agreement_i)
-            if context == 'narrow':
-                product_sentiments.extend(interpret_paragraph(c, nlp))
-            else:
-                product_sentiments.extend(interpret_paragraph_widecontext(c, nlp))
+             if c[1] >= 0:
+                if context == 'narrow':
+                    product_sentiments.extend(interpret_paragraph(c, nlp))
+                else:
+                    product_sentiments.extend(interpret_paragraph_widecontext(c, nlp))
 
         # products_sentiments = [("Apple", 0.5, 1), ("Bose", -0.4, 9), ...]
 
@@ -102,7 +103,7 @@ def interpret_text(text, nlp):
     for ent in doc.ents:
         #print(ent.text, ent.start_char, ent.end_char, ent.label, ent.label_)    
         if(ent.label == 383 or ent.label== 386):
-            # TBA : If ORG, and next token is alphanumeric (SR800, HD599), then product
+            # Product extraction: If ORG, and next token is alphanumeric (SR800, HD599), then product
             prod_orgs.append(ent.text)
 
     return prod_orgs 
@@ -114,12 +115,11 @@ def get_local(sr, lookback_days = 360):
     # List of lists of JSON objects (which are comment objects)
     with open(comments_path) as f:
         comments_2D = json.load(f)
-    # Unpacking to just have a list of text
+    # Unpacking into a list of (comment body, comment score)
     comments = []
     comments_upvotes = []
 
-    # Get score... comment['score']
-    # Turn comments into a tuple with (comment['body'], comment['score'])
+    # Turn comment JSONs into [(comment['body'], comment['score']),...]
     for i in range(len(comments_2D)):
         for comment in comments_2D[i]:
             comments.append(comment['body'])
@@ -127,14 +127,11 @@ def get_local(sr, lookback_days = 360):
                 comments_upvotes.append((comment['body'], comment['score']))
             except KeyError:
                 comments_upvotes.append((comment['body'], 1))
-    #return comments
+
     return comments_upvotes
 
 def get_and_interpret(subreddits, keyword, lookback_days = 360): 
-
-    # TODO: Make this able to handle arbitrary numbers of 
-    # subreddits...
-
+    ''' Interpret community sentiments (scores) from a set of subreddits'''
     # 1) Load comments and comment scores
     comments_upvotes = []
     for sr in subreddits:

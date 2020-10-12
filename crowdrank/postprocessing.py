@@ -39,8 +39,9 @@ def remove_improbable_entities(results, cutoff = 3):
 
 def combine_like_entities(results, n = 3):
     '''Combines mentions of like-entities using fuzzy matching.
-    The initial set consists of entities which have been mentioned
-    at least n times.'''
+    The initial set: entities which have been mentioned at least n times.'''
+    # Combine entities which have extreme string similarity (sennheiser, sennheizer sr500)
+    #processed_results = combine_like_entities(results)
 
     for i, tupe in enumerate(results):
         if tupe[1] < n:
@@ -101,8 +102,7 @@ def combine_sentimentful_entities(results, top_entities):
     and adds together their scores via weighted averages. Also
     gives variance...'''
 
-    # Construct a dictionary so that we can keep track of 
-    # all these scores and do thorough scoring after
+    # Construct a dictionary to keep track of scores, aggregate later
     entity_score_dict = {}
 
     for entity in top_entities:
@@ -112,16 +112,11 @@ def combine_sentimentful_entities(results, top_entities):
             if(check_match(entity, r[0])):
                 entity_score_dict[entity].append((r[1], r[2]))
 
-    # In theory, after all this we should have a dict whose keys
-    # are entity strings and whose values are lists of sentiment-agreement 
-    # tuples. e.g. entity_score_dict['sony'] = [(0.05, 10), (0.1, 2), (-0.4, 3)]
-
-    # Now, let's define a function which will collapse the values of these dicts
-    # into a tuple: (mean_sentiment, total_agreements, sentiment_variance)
+    # After this, aggregate scores from this dictionary of
+    # entity string keys, and lists of score tuples as vals.
+    # e.g. entity_score_dict['sony'] = [(0.05, 10), (0.1, 2), (-0.4, 3)]
     
     scored_entities = apply_aggregate_scoring(entity_score_dict)
-
-
 
     return scored_entities
 
@@ -130,12 +125,10 @@ def fuzzy_matching(list_of_strs):
     '''Test function for fuzzy_matching. A faster way to 
     compute string similarity is likely python-Levenshtein (C)'''
 
-    str_a, str_b, str_c = "hi", "hi there", "aasshiadsd"
-    r = fuzz.ratio(str_a, str_b)
-    r2 = fuzz.partial_ratio(str_a, str_b)
-    r3 = fuzz.partial_ratio(str_b, str_c)
-    r4 = fuzz.partial_ratio(str_a, str_c)
-    print(r, r2, r3, r4)
+    str_a, str_c = "hi",  "aasshiadsd"
+    r = fuzz.ratio(str_a, str_c)
+    r2 = fuzz.partial_ratio(str_a, str_c)
+    print(r, r2)
 
 def confirm_known_brands(results, known_brands):
     result_dict = {}
@@ -173,8 +166,6 @@ def postprocess_sentimentful_results(results, xref, known_brands):
     top_entities = get_top_entities(results)
     scored_entities = combine_sentimentful_entities(results, top_entities)
 
-    # Combine entities which have extreme string similarity (sennheiser, sennheizer sr500)
-    #processed_results = combine_like_entities(results)
     
     #Finally, check if these keys correspond to known_brands
     if xref:
@@ -195,8 +186,10 @@ def postprocess(keyword, xref = True, lookback_days = 360): #(subreddit, xref = 
     print("Number of entities: {}".format(len(results)))
     results = list(results) # [["sony", 12], ..., ["wip",1]]
 
-    known_brands = [] 
-    with open("../data/product_data/brands.txt", 'r') as f:
+    known_brands = []
+    brands_path = "../data/product_data/headphones_brands.txt" if (keyword == 'Headphones') else "../data/product_data/brands.txt"
+    print("Brands path: {}".format(brands_path))
+    with open(brands_path, 'r') as f:
         known_brands = [line[:-1] for line in f]
     
     ranking = postprocess_sentimentful_results(results, xref, known_brands)
