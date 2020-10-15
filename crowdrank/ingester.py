@@ -4,8 +4,10 @@ import spacy
 import nltk
 from collections import Counter
 import sys
+import os.path
 
-# Ingestion handler object would make this module cleaner.
+# Ingestion: query Pushshift.io API for relevant submissions,
+# then get all associated comments. Store this.
 
 
 def get_assoc_comments(subm_id):
@@ -27,6 +29,15 @@ def get_assoc_comments(subm_id):
     cs_data = json.loads(cs_page.text)
 
     return cs_data["data"]
+
+def get_submission_ids(combined_submissions, subreddit):
+    # Get submission ids, rm duplicates, check subreddit is correct
+    submission_ids = [sub["id"]
+        for sub in combined_submissions
+        if sub["subreddit"].lower() == subreddit.lower()
+    ]
+    submission_ids = list(set(submission_ids)) 
+    return submission_ids
 
 
 def get_and_dump_expanded(
@@ -72,12 +83,7 @@ def get_and_dump_expanded(
         json.dump(combined_submissions, f)
 
     # Get all submission ids, and double check the subreddit is correct
-    submission_ids = [
-        sub["id"]
-        for sub in combined_submissions
-        if sub["subreddit"].lower() == subreddit.lower()
-    ]
-    submission_ids = list(set(submission_ids))  # Take out duplicates
+    submission_ids = get_submission_ids(combined_submissions, subreddit)
 
     # Iterate thru submissions, get associated comments
     comment_list = []
@@ -103,34 +109,52 @@ def get_and_dump(subreddit, num_posts, keyword, lookback_days=360, dumppath="../
         )
     )
 
-    # TBD: Put all this data on S3
-    # Save submissions for later
+    # Get all relevant submissions
     submissions_data = json.loads(h_page.text)
-    out_file = dumppath + "{}/{}_{}.{}".format(
-        "submission_data", subreddit, lookback_days, "json"
-    )
 
-    with open(out_file, "w") as f:
-        json.dump(submissions_data, f)
+    # Submission ids, double checking the subreddit is correct
+    submission_ids = get_submission_ids(submissions_data['data'], subreddit)
 
     # Iterate thru submissions, get associated comments
     comment_list = []
-    for h_d in submissions_data["data"]:
-        comments = get_assoc_comments(h_d)
+    for submission_id in submission_ids:
+        comments = get_assoc_comments(submission_id)
         comment_list.append(comments)
 
+
+    # TBD: Put all this data on S3
+    # Save submissions for later
+    submission_file = dumppath + "{}/{}_{}.{}".format(
+        "submission_data", subreddit, lookback_days, "json"
+    )
+
+    with open(submission_file, "w") as f:
+        json.dump(submissions_data, f)
+
     # Save comment data
-    out_file = dumppath + "{}/{}_{}.{}".format(
+    comment_file = dumppath + "{}/{}_{}.{}".format(
         "comment_data", subreddit, lookback_days, "json"
     )
-    with open(out_file, "w") as f:
+    with open(comment_file, "w") as f:
         json.dump(comment_list, f)
 
-    return out_file
+    return comment_file
+
+def check_for_comments(subreddit, lookback_days = 360):
+    # True if a corresponding comments file exists, else False
+    cmt_file = "../data/{}/{}_{}.{}".format(
+        "comment_data", subreddit, lookback_days, "json"
+    )
+
+    if os.path.isfile(cmt_file):
+        return True
+    else:
+        return False
+
 
 
 def count_comments(sr, lookback_days):
-    # Helper function: quickly gets num of comments in 2D list
+    # Gets num of comments in 2D list
     comments_path = "../data/comment_data/{}_{}.json".format(sr, lookback_days)
     with open(comments_path) as f:
         comments_2D = json.load(f)
@@ -143,7 +167,6 @@ def keyword_to_subreddits(keyword):
     a model (compare similarity of keyword to subreddit description) 
     so it generalizes. For now, just support these."""
     kw_to_subreddits = {
-        # 'audiophile', 'budgetaudiophile'],
         "Headphones": ["headphoneadvice"],
         "Laptops": ["laptops", "suggestalaptop", "laptopdeals"],
         "Computers": ["computers", "suggestapc", "pcmasterrace"],
@@ -163,27 +186,29 @@ def keyword_to_subreddits(keyword):
         print("For {}, comments in {}".format(sr, get_and_dump(sr, num_posts)))"""
 
 
-def get_recent_posts(keyword, num_posts=500):
+def get_recent_posts(keyword, num_posts=500, skip=False):
     # Supports keyword --> multiple subreddits
     subreddits = keyword_to_subreddits(keyword)
     for sr in subreddits:
-        print("For {}, comments in {}".format(
-            sr, get_and_dump(sr, num_posts, keyword)))
-        # print("For {}, comments in {}".format(sr, get_and_dump_expanded(sr, num_posts, keyword)))
+        print("Checking if comments exist for {}".format(sr))
+        if(not check_for_comments(sr)):
+            
+            print("For {}, comments in {}".format(
+                sr, get_and_dump(sr, num_posts, keyword)))
+
     return subreddits
 
 
 def main():
-    """ Taking in 3 subreddits, this script queries pushshift.io 
+    """ Taking in subreddits, this script queries pushshift.io 
     to get submissions in the last year, gets associated comments,
-    and saves these to files on a per-subreddit basis."""
+    and saves compressed view of comment data."""
     subreddit_list = sys.argv[1], sys.argv[2], sys.argv[3]
 
     # TBA: Parallelize
     sr = sys.argv[1]
 
     get_and_dump(sr)
-    # get_comments_save(subreddit_list)
 
 
 if __name__ == "__main__":

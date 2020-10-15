@@ -44,7 +44,7 @@ def load_page(keyword, xref):
         
          # If results exist, skip ingestion and interpretation
         if not os.path.exists('../data/results/{}_360.csv'.format(keyword)):
-            subreddits = ingester.get_recent_posts(keyword, num_posts =500)
+            subreddits = ingester.get_recent_posts(keyword, num_posts = 500)
             progress_bar.progress(50)
             status_text.text("Interpreting...")
             # For 15,000 --> 5 mins
@@ -71,13 +71,12 @@ def load_page(keyword, xref):
 
         # Extra info
         st.markdown("---")
-        subreddits = [s.capitalize() for s in ingester.keyword_to_subreddits(keyword)]
+        subreddits = [sr.capitalize() for sr in ingester.keyword_to_subreddits(keyword)]
         st.write("Subreddits analyzed: {}".format(", ".join(subreddits)))
-        st.write("Comments analyzed: {}".format(sum([ingester.count_comments(sr, 360) for sr in subreddits])))
+        st.write("Comments analyzed: {}".format(sum([ingester.count_comments(sr.lower(), 360) for sr in subreddits])))
 
 
 if __name__=='__main__':
-    # Set title, get input, load_page by calling crowdrank.
     st.markdown("<h1 style='text-align: center; color: black;'> CrowdRank </h1>", unsafe_allow_html=True)
     st.markdown("---")
     st.set_option('deprecation.showPyplotGlobalUse', False)
