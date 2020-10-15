@@ -6,7 +6,6 @@ CrowdRank is an end-to-end package for interpreting community sentiments about b
 NLP Models: SpaCy [Named Entity Recognition], VADER [Sentiment Analysis]
 
 Tech Stack: Python, AWS EC2, Streamlit, JSON
-[//]: <> (Comment)
 
 ## Motivation
 210 million Americans shop online every year and 80% of them do research before purchasing an item. On Amazon, there 1000s of products in the same category (e.g. Wireless Headphones) with over 4 stars, making it almost impossible to sort through them. What if we could tap into the collective knowledge of communities, to help users quickly choose the best brands and products?
