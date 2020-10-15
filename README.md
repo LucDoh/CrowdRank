@@ -17,13 +17,13 @@ This web app and package aim to solve that problem, by using NLP to quickly and 
 ## Results (package)
 
 ## Usage
-First, make subdirectories inside data/:
+First, make subdirectories inside data/:  
 mkdir comment_data interpreted_data submission_data results
 
-Install requirements:
+Install requirements:  
 pip install -r requirements.txt
 
-Then, simply the web app inside scripts/:
+Then, simply the web app inside scripts/:  
 streamlit run crowdrank_app.py
 
 
