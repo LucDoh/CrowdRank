@@ -15,8 +15,7 @@ def get_assoc_comments(subm_id):
     # c_page = requests.get('https://api.pushshift.io/reddit/submission/comment_ids/{}'.format(d['id']))
 
     c_page = requests.get(
-        "https://api.pushshift.io/reddit/submission/comment_ids/{}".format(
-            subm_id)
+        "https://api.pushshift.io/reddit/submission/comment_ids/{}".format(subm_id)
     )
     c_data = json.loads(c_page.text)
 
@@ -30,13 +29,15 @@ def get_assoc_comments(subm_id):
 
     return cs_data["data"]
 
+
 def get_submission_ids(combined_submissions, subreddit):
     # Get submission ids, rm duplicates, check subreddit is correct
-    submission_ids = [sub["id"]
+    submission_ids = [
+        sub["id"]
         for sub in combined_submissions
         if sub["subreddit"].lower() == subreddit.lower()
     ]
-    submission_ids = list(set(submission_ids)) 
+    submission_ids = list(set(submission_ids))
     return submission_ids
 
 
@@ -113,14 +114,13 @@ def get_and_dump(subreddit, num_posts, keyword, lookback_days=360, dumppath="../
     submissions_data = json.loads(h_page.text)
 
     # Submission ids, double checking the subreddit is correct
-    submission_ids = get_submission_ids(submissions_data['data'], subreddit)
+    submission_ids = get_submission_ids(submissions_data["data"], subreddit)
 
     # Iterate thru submissions, get associated comments
     comment_list = []
     for submission_id in submission_ids:
         comments = get_assoc_comments(submission_id)
         comment_list.append(comments)
-
 
     # TBD: Put all this data on S3
     # Save submissions for later
@@ -140,7 +140,8 @@ def get_and_dump(subreddit, num_posts, keyword, lookback_days=360, dumppath="../
 
     return comment_file
 
-def check_for_comments(subreddit, lookback_days = 360):
+
+def check_for_comments(subreddit, lookback_days=360):
     # True if a corresponding comments file exists, else False
     cmt_file = "../data/{}/{}_{}.{}".format(
         "comment_data", subreddit, lookback_days, "json"
@@ -150,7 +151,6 @@ def check_for_comments(subreddit, lookback_days = 360):
         return True
     else:
         return False
-
 
 
 def count_comments(sr, lookback_days):
@@ -191,10 +191,13 @@ def get_recent_posts(keyword, num_posts=500, skip=False):
     subreddits = keyword_to_subreddits(keyword)
     for sr in subreddits:
         print("Checking if comments exist for {}".format(sr))
-        if(not check_for_comments(sr)):
-            
-            print("For {}, comments in {}".format(
-                sr, get_and_dump(sr, num_posts, keyword)))
+        if not check_for_comments(sr):
+
+            print(
+                "For {}, comments in {}".format(
+                    sr, get_and_dump(sr, num_posts, keyword)
+                )
+            )
 
     return subreddits
 
