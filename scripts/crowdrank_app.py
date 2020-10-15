@@ -77,7 +77,7 @@ def load_page(keyword, xref):
 
 
 if __name__=='__main__':
-    '''Set title, get input, load_page by calling crowdrank.'''
+    # Set title, get input, load_page by calling crowdrank.
     st.markdown("<h1 style='text-align: center; color: black;'> CrowdRank </h1>", unsafe_allow_html=True)
     st.markdown("---")
     st.set_option('deprecation.showPyplotGlobalUse', False)
