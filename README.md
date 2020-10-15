@@ -17,16 +17,18 @@ This web app and package aim to solve that problem, by using NLP to quickly and 
 ## Results (package)
 
 ## Usage
-First, make subdirectories inside data/:  
+Then, run the web app from inside scripts/:  
+streamlit run crowdrank_app.py
+
+## Installing
+Clone the repository:  
+git clone https://github.com/LucDoh/CrowdRank.git  
+
+Make subdirectories inside data/:  
 mkdir comment_data interpreted_data submission_data results
 
 Install requirements:  
 pip install -r requirements.txt  
 python -m spacy download en_core_web_md
 
-Then, simply the web app inside scripts/:  
-streamlit run crowdrank_app.py
-
-
-## Installing
 
