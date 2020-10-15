@@ -21,7 +21,7 @@ First, make subdirectories inside data/:
 mkdir comment_data interpreted_data submission_data results
 
 Install requirements:  
-pip install -r requirements.txt
+pip install -r requirements.txt  
 python -m spacy download en_core_web_md
 
 Then, simply the web app inside scripts/:  
