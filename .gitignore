@@ -2,7 +2,8 @@
 data/*
 
 # exception to the rule
-!data/.gitkeep 
+!data/.gitkeep
+!data/product_data
 
 # exclude vscode settings folder
 .vscode/*
