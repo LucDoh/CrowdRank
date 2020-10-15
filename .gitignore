@@ -12,3 +12,5 @@ data/*
 
 # exclude this
 .ipynb_checkpoints/*
+
+.DS_Store
