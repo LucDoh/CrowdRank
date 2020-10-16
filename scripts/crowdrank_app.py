@@ -1,12 +1,11 @@
 import sys
-
 sys.path.append("..")
 import os.path
-import streamlit as st
+import time
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import time
+import streamlit as st
 
 from crowdrank import ingester
 from crowdrank import interpreter

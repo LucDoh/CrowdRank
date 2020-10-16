@@ -1,4 +1,6 @@
-<div style='text-align:center'><img src='static/CrowdRank_Logo.png'></div>
+<p align="center">
+<img width="55%" src='static/CrowdRank_Logo.png'>
+</p>
 
 ## Description
 CrowdRank is an end-to-end package for interpreting community sentiments about brands and products from Reddit data. From a single keyword describing a product category (headphones, computers, laptops, tvs), skim through and interpret thousands of relevant comments and get back a ranking of the best brands in that space.
@@ -9,10 +11,10 @@ Tech Stack: Python, AWS EC2, JSON.
 Some packages: Requests, Pandas, Fuzzywuzzy, Streamlit...
 
 ## Data
-Over 4 billion Reddit posts, queryable through [Pushshift's API](https://reddit-api.readthedocs.io/en/latest/)
+Over 4 billion Reddit posts, queryable through [Pushshift's API](https://reddit-api.readthedocs.io/en/latest/).
 
 ## Motivation
-210 million Americans shop online every year and 80% of them do research before purchasing an item. On Amazon, there 1000s of products in the same category (e.g. Wireless Headphones) with over 4 stars, making it almost impossible to sort through them. What if we could tap into the collective knowledge of communities, to help users quickly choose the best brands and products?
+210 million Americans shop online every year and 80% of them do research before purchasing an item. There 1000s of products in the same category (e.g. Wireless Headphones) with over 4 stars, making it almost impossible to sort through them. What if we could tap into the collective knowledge of communities, to help users quickly choose the best brands and products?
 
 This web app and package tackle that problem, by using NLP to quickly and intelligently turn thousands of comments into a simple ranking of brands with 2 scores: "Community Score" and "Popularity".
 
