@@ -5,13 +5,16 @@ from fuzzywuzzy import fuzz
 from collections import Counter
 from emoji import UNICODE_EMOJI
 
+'''class Postprocessor():
+    def __init__(self, keyword, xref):
+        self.entity_scores = []
+    
+    def fuzzy_match(self):
+        return'''
+
 
 def is_emoji(s):
     return s in UNICODE_EMOJI
-
-
-# Need to add a class to make processing step more clear.
-
 
 def combine_scorevectors(vec_1, vec_2):
     """Combining two entity-score vectors,
@@ -28,9 +31,7 @@ def check_match(entity_1, entity_2, threshold=95):
 
 
 def remove_improbable_entities(results, cutoff=3):
-    """Here we simply remove entities we consider improbable
-    to be products/brand-names which will contribute to falsey increasing
-    the number of mentions.  E.g. if less than 3 characters (dm, eq, tx)"""
+    """Remove improbable entities. E.g. if less than 3 characters (dm, eq, tx)"""
     # Should remove links from Amazon, which give amazon undue credit.
     new_results = []
     for r in results:
@@ -60,9 +61,6 @@ def combine_like_entities(results, n=3):
                 running_score += r2[1]
 
         sum_scores.append(running_score)
-
-    print(results[:last_considered_brand])
-    print([rl[1] for rl in results[:last_considered_brand]])
     print(sum_scores)
 
     combined_results = [
@@ -119,7 +117,7 @@ def combine_sentimentful_entities(results, top_entities):
             if check_match(entity, r[0]):
                 entity_score_dict[entity].append((r[1], r[2]))
 
-    # After this, aggregate scores from this dictionary of
+    # Aggregate scores from this dictionary of
     # entity string keys, and lists of score tuples as vals.
     # e.g. entity_score_dict['sony'] = [(0.05, 10), (0.1, 2), (-0.4, 3)]
 
@@ -139,6 +137,7 @@ def fuzzy_matching(list_of_strs):
 
 
 def confirm_known_brands(results, known_brands):
+    '''Crossreference with a list of known_brands'''
     result_dict = {}
     for r in results:
         if r[0] in set(known_brands):
@@ -147,15 +146,11 @@ def confirm_known_brands(results, known_brands):
 
 
 def postprocess_results(results, known_brands):
-    """Takes in list of (product, # of occurences)
-    Outputs popularity ranking... This is the original
-    version of postprocess_sentimentful_results."""
+    """ Deprecated: Takes in (product, # of occurences)
+    and popularity ranking..."""
     results = remove_improbable_entities(results)
     processed_results = combine_like_entities(results)
-    print(processed_results)
-
     result_dict = confirm_known_brands(processed_results, known_brands)
-
     return Counter(result_dict)
 
 
@@ -217,7 +212,7 @@ def postprocess(
 
     ranking = postprocess_sentimentful_results(results, xref, known_brands)
 
-    # Dataframe work
+    # Dataframe
     df = pd.DataFrame.from_dict(ranking, orient="index")
     df.columns = ["Sentiment", "Popularity", "Variance"]
     df = df.sort_values(by=["Sentiment"], ascending=False)
@@ -231,9 +226,6 @@ def postprocess(
     return df
 
 
-def postprocess_multisubreddit(subreddits, xref=True, lookback_days=360):
-    """ Support multiple subreddits... May not be necessary based on refactor."""
-    return  # df
 
 
 def main():

@@ -7,8 +7,8 @@ import sys
 
 
 class Knowledgebase:
-    """Class for interpreting knowledge stored in 
-    comments, constructed from a list of (comment_text, upvotes)."""
+    """Class for interpreting data comments, from (comment_text, upvotes)
+    tuples. Other features: datetime """
 
     def __init__(self, comments):
         # comments = [(text_0, upvotes_0),...]
