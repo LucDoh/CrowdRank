@@ -25,8 +25,13 @@ def test_get_comments():
     assert unpacked_comments
     return len(unpacked_comments)
 
-
+# Test 3: Check for bucket existence
+def test_is_ec2():
+    print("Running on EC2:", ingester.is_ec2())
+    if ingester.is_ec2():
+        assert ingester.bucket_exists()
+    
 print(test_ingestion_pipeline())
 print(test_get_comments())
 
-
+test_is_ec2()
