@@ -280,7 +280,6 @@ monument labs
 thecus
 metra
 vizio
-amazon
 mycharge
 rode
 gemini

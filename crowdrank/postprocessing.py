@@ -5,26 +5,16 @@ from fuzzywuzzy import fuzz
 from collections import Counter
 from emoji import UNICODE_EMOJI
 
-'''class Postprocessor():
-    def __init__(self, keyword, xref):
-        self.entity_scores = []
-    
-    def fuzzy_match(self):
-        return'''
-
 
 def is_emoji(s):
     return s in UNICODE_EMOJI
 
 def combine_scorevectors(vec_1, vec_2):
-    """Combining two entity-score vectors,
-    e.g. vec_1 = (e_1, s_1, a_1), vec_2 = (e_2, s_2, a_2)"""
+    """Combining two entity-scores, e.g. 
+    (e_1, s_1, a_1) and (e_2, s_2, a_2)"""
     total_agreements = vec_1[2] + vec_2[2]
     normed_sentiment = (vec_1[1] * vec_1[2] + vec_2[1] * vec_2[2]) / total_agreements
-
-    combined_vector = (vec_1[0], normed_sentiment, total_agreements)
-    return combined_vector
-
+    return (vec_1[0], normed_sentiment, total_agreements)
 
 def check_match(entity_1, entity_2, threshold=95):
     return fuzz.partial_ratio(entity_1, entity_2) >= threshold
@@ -42,10 +32,8 @@ def remove_improbable_entities(results, cutoff=3):
 
 
 def combine_like_entities(results, n=3):
-    """Combines mentions of like-entities using fuzzy matching.
-    The initial set: entities which have been mentioned at least n times."""
-    # Combine entities which have extreme string similarity (sennheiser, sennheizer sr500)
-    # processed_results = combine_like_entities(results)
+    """Combine similar-entities using fuzzy matching, e.g. Bose & Bose WM500.
+    Initial set: entities which have been mentioned at least n times."""
 
     for i, tupe in enumerate(results):
         if tupe[1] < n:
@@ -61,7 +49,6 @@ def combine_like_entities(results, n=3):
                 running_score += r2[1]
 
         sum_scores.append(running_score)
-    print(sum_scores)
 
     combined_results = [
         (r[0], sum_scores[i]) for i, r in enumerate(results[:last_considered_brand])
@@ -71,7 +58,6 @@ def combine_like_entities(results, n=3):
 
 def aggregate_score(tuples):
     # Tuples are a list of [(sentiment_0, agreement_0),...]
-    print(tuples)
     unscaled_sentiment = 0
     total_votes = 0
     if not tuples:
@@ -107,7 +93,7 @@ def combine_sentimentful_entities(results, top_entities):
     and adds together their scores via weighted averages. Also
     gives variance..."""
 
-    # Construct a dictionary to keep track of scores, aggregate later
+    # Dictionary to track scores of top brands/products
     entity_score_dict = {}
 
     for entity in top_entities:
@@ -117,10 +103,8 @@ def combine_sentimentful_entities(results, top_entities):
             if check_match(entity, r[0]):
                 entity_score_dict[entity].append((r[1], r[2]))
 
-    # Aggregate scores from this dictionary of
-    # entity string keys, and lists of score tuples as vals.
+    # Aggregate scores from this dictionary, {entity_string : [community_score, popularity]}
     # e.g. entity_score_dict['sony'] = [(0.05, 10), (0.1, 2), (-0.4, 3)]
-
     scored_entities = apply_aggregate_scoring(entity_score_dict)
 
     return scored_entities
@@ -166,14 +150,14 @@ def get_top_entities(results, fraction=0.2):
 
 def postprocess_sentimentful_results(results, xref, known_brands):
     """Takes in list of (product, sentiment, agreement),
-    then performs similar operations as postprocess."""
+    processes this into a ranking by score aggregation and
+    fuzzy-matching."""
 
-    # Should have at least 3 characters to be a brand.
     results = remove_improbable_entities(results, cutoff=3)
     top_entities = get_top_entities(results)
     scored_entities = combine_sentimentful_entities(results, top_entities)
 
-    # Finally, check if these keys correspond to known_brands
+    # Cross-reference (keys correspond to known_brands)
     if xref:
         scored_entities = {
             key: scored_entities[key]
@@ -181,12 +165,12 @@ def postprocess_sentimentful_results(results, xref, known_brands):
             if key in known_brands
         }
 
-    return scored_entities  # scored_entities
+    return scored_entities 
 
 
 def postprocess(
     keyword, xref=True, lookback_days=360
-):  # (subreddit, xref = True, lookback_days = 360):
+): 
     """Postprocessing includes: fuzzy string matching,
     removing 1 and 2 letter entities, and uses a list of
     brands to make the final ranking."""
@@ -200,7 +184,6 @@ def postprocess(
     print("Number of entities: {}".format(len(results)))
     results = list(results)  # [["sony", 12], ..., ["wip",1]]
 
-    known_brands = []
     brands_path = (
         "../data/product_data/headphones_brands.txt"
         if (keyword == "Headphones")
@@ -218,37 +201,8 @@ def postprocess(
     df = df.sort_values(by=["Sentiment"], ascending=False)
     df = df.round({"Sentiment": 2, "Variance": 2})
 
-    # print(ranking)
 
     out_path = "../data/results/{}_{}.csv".format(keyword, lookback_days)
     df.to_csv(out_path)
 
     return df
-
-
-
-
-def main():
-
-    results_filepath = str(sys.argv[1])
-    with open(results_filepath, "r") as f:
-        results = json.loads(f.readlines()[0])
-    print(len(results))
-    results = list(results)
-
-    known_brands = []
-    with open("../data/product_data/brands.txt", "r") as f:
-        for line in f:
-            known_brands.append(line[:-1])
-
-    ranking = postprocess_results(results, known_brands)
-    print(ranking)
-
-    out_path = "/".join(results_filepath.split("/")[:-1]) + "ranking.txt"
-    with open(out_path, "w") as f:
-        json.dump(ranking, f, indent=4)
-
-
-if __name__ == "__main__":
-    main()
-

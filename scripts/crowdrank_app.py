@@ -33,20 +33,22 @@ def handle_input():
 
     xref_response = st.sidebar.selectbox("Cross-reference brands?", ("Yes", "No"))
     xref = xref_response == "Yes"
-    return keyword, xref
+    recollect = st.sidebar.selectbox('Get new data?', ('No', 'Yes'))
+    return keyword, xref, recollect == 'Yes'
 
 
 def render_UI(df_ranking, keyword):
     df_ranking = df_ranking.sort_values(by=["Popularity"], ascending=False)
-    df_ranking = df_ranking.iloc[:8]
+    if len(df_ranking) >= 8:
+        df_ranking = df_ranking.iloc[:8]
     sns.set_theme()
     sns.set_style("darkgrid")
-    df_ranking["Color"] = [i for i in sns.color_palette().as_hex()[:8]]
+    df_ranking["Color"] = [i for i in sns.color_palette().as_hex()[:len(df_ranking)]]
 
     visualizer.combined_plot(df_ranking)
 
 
-def load_page(keyword, xref):
+def load_page(keyword, xref, skip):
     status_text = st.empty()
     progress_bar = st.progress(0)
 
@@ -56,21 +58,21 @@ def load_page(keyword, xref):
         progress_bar.progress(33)
         time.sleep(0.1)
 
-        # If results exist, skip ingestion and interpretation
-        if not os.path.exists("../data/results/{}_360.csv".format(keyword)):
-            subreddits = ingester.get_recent_posts(keyword, num_posts=500)
-            progress_bar.progress(50)
-            status_text.text("Interpreting...")
-            # For 15,000 --> 5 mins
-            comments = interpreter.get_and_interpret(subreddits, keyword)
+        # If results exist, skip ingestion
+        subreddits = ingester.get_recent_posts(keyword, num_posts=500, skip = skip)
+        progress_bar.progress(60)
+        status_text.text("Interpreting...")
+        # For 15,000 --> 5 mins
+        comments = interpreter.get_and_interpret(subreddits, keyword)
 
-        progress_bar.progress(66)
+        progress_bar.progress(80)
         time.sleep(0.1)
         status_text.text("Processing...")
 
         df_ranking = postprocessing.postprocess(keyword, xref=xref)
         df_ranking.index.name = "Brand"
         df_ranking.index = df_ranking.index.str.title()
+        print(df_ranking)
 
         progress_bar.progress(100)
         time.sleep(0.1)
@@ -79,8 +81,6 @@ def load_page(keyword, xref):
 
         # Render visualizations
         render_UI(df_ranking, keyword)
-
-        # st.write("Top 5 brands: {}".format(", ".join(df_ranking.iloc[:5].index.values))
 
         # Extra info
         st.markdown("---")
@@ -91,6 +91,7 @@ def load_page(keyword, xref):
                 sum([ingester.count_comments(sr.lower(), 360) for sr in subreddits])
             )
         )
+        # st.write("Top 5 brands: {}".format(", ".join(df_ranking.iloc[:5].index.values))
 
 
 if __name__ == "__main__":
@@ -101,6 +102,7 @@ if __name__ == "__main__":
     st.markdown("---")
     st.set_option("deprecation.showPyplotGlobalUse", False)
 
-    keyword, xref = handle_input()
-    load_page(keyword, xref)
+    keyword, xref, recollect = handle_input()
+    skip = not recollect
+    load_page(keyword, xref, skip)
 
