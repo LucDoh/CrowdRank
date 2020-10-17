@@ -63,6 +63,22 @@ def save_posts(posts, subreddit, lookback_days, dumppath="../data/"):
 
     return out_file
 
+ 
+def is_ec2():
+    # Check if on EC2 (not local)
+    import socket
+    try:
+        socket.gethostbyname('instance-data.ec2.internal.')
+        return True
+    except socket.gaierror:
+        return False
+
+def bucket_exists():
+    # Check that main bucket exists
+    import boto3
+    s3 = boto3.resource('s3')
+    return s3.Bucket('crowdsourced-data-reddit') in s3.buckets.all()
+
 
 def get_and_dump_expanded(
     subreddit, num_posts, keyword, lookback_days=360, dumppath="../data/"
@@ -99,11 +115,11 @@ def get_and_dump_expanded(
     print(combined_submissions)
     # Get all submission ids, and double check the subreddit is correct
     submission_ids = get_submission_ids(combined_submissions, subreddit)
-    #print(submission_ids)
-    # Iterate thru submissions, get associated comments
+
     comment_list = []
     for submission_id in submission_ids:
         comment_list.append(get_assoc_comments(submission_id))
+    #print(submission_ids)
     #print(comment_list)
     # Save submissions for later
     posts = (combined_submissions, comment_list)
