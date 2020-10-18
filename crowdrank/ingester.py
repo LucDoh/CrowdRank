@@ -11,6 +11,92 @@ from . import helpers
 # and storing all associtaed comments
 
 
+class DataHandler():
+    '''Data-handling class. Attributes are parameters about the 
+    search (input and inferred) and data (comments, submissions),'''
+    def __init__(self, keyword, num_posts, skip = True, use_s3 = False, lookback_days = 360):
+        self.keyword = keyword.capitalize()
+        self.num_posts = num_posts
+        self.lookback = lookback_days
+        self.skip = skip
+        self.use_s3 = use_s3
+        self.subreddits = self.keyword_to_subreddits()
+        self.submissions = []
+        self.comments = []
+        self.comment_data = []
+    
+    def __str__(self): 
+       return 'DH --> Keyword: \'{}\', subreddits: {}, num_posts: {}, use_s3: {}'.format(self.keyword, self.subreddits, self.lookback, self.num_posts, self.use_s3)
+    
+    def get_recent_posts(self):
+        for sr in self.subreddits:
+            if self.skip and check_for_comments(sr, self.use_s3):
+                print("Using exists data for {}".format(sr))
+                comments = [[]]
+            else:
+                print("Collecting new data for {}... Patientez ...".format(sr))
+                comment_file, comments = get_and_dump(sr, self.num_posts, self.keyword, self.lookback, self.use_s3)
+                print(
+                    "For {}, comments in {}".format(sr, comment_file)
+                )
+        self.comments = helpers.unpack_comments(comments)
+        return self.comments
+        
+
+    def keyword_to_subreddits(self):
+    # For each keyword (electronics category) top 
+    # 1-3 subreddits. Later: generalize this
+    # (Topic modeling of subreddits + similarity to word
+    # reprs).
+        kw_subreddit = {
+            "Headphones": ["headphoneadvice"],
+            "Laptops": ["laptops", "suggestalaptop", "laptopdeals"],
+            "Computers": ["computers", "suggestapc", "pcmasterrace"],
+            "Keyboards": ["mechanicalkeyboards", "keyboards", "mechanicalkeyboardsUK"],
+            "Mouses": ["MouseReview"],
+            "Monitors": ["Monitors"],
+            "Tvs": ["Televisions"],
+            "Tablets": ["Tablets", "androidtablets", "ipad"],
+            "Smartwatches": ["smartwatch", "androidwear", "ioswear"],
+        }
+
+        if not self.keyword in kw_subreddit:
+            print("None found, using BuyItForLife")
+            return "BIFL"
+        return kw_subreddit[self.keyword]
+
+
+
+def get_and_dump(subreddit, num_posts, keyword, lookback_days=360, use_s3 = False):
+    print("Looking at {}".format(subreddit))
+    h_page = requests.get(
+        "http://api.pushshift.io/reddit/search/submission/?subreddit={}&q=best+advice+recommendations&before={}d&size={}&sort_type=score".format(
+            subreddit, lookback_days, num_posts
+        )
+    )
+
+    # Get all relevant submissions, verify subreddit
+    submissions_data = json.loads(h_page.text)
+    submission_ids = get_submission_ids(submissions_data["data"], subreddit)
+    print("Submissions from {}: {} ({})".format(subreddit, len(submission_ids), len(submissions_data['data'])))
+    # Iterate thru submissions, get associated comments
+    comment_list = []
+    for submission_id in submission_ids:
+        comments = get_assoc_comments(submission_id)
+        comment_list.append(comments)
+
+    # Save submissions for later
+    posts = (submissions_data["data"], comment_list)
+
+    if use_s3:
+        comment_file = save_posts_to_S3(posts, subreddit, lookback_days)
+    else:
+        comment_file = save_posts_locally(posts, subreddit, lookback_days)
+
+    return comment_file, comment_list
+
+
+
 def get_assoc_comments(subm_id):
     """ For a submission ID, request a JSON of associated comments."""
     cs_page = requests.get(
@@ -18,12 +104,11 @@ def get_assoc_comments(subm_id):
     )
 
     comments = json.loads(cs_page.text)["data"]
-    #print(comments)
     return comments
 
 
 def get_submission_ids(combined_submissions, subreddit):
-    """ Get submission ids, rm duplicates, verify subreddit """
+    """ Get submission ids, remove duplicates, verify subreddit """
     submission_ids = [
         sub["id"]
         for sub in combined_submissions
@@ -63,133 +148,58 @@ def save_posts_to_S3(posts, subreddit, lookback_days, bucket_name = 'crowdsource
     return "{}/{}".format(bucket_name, file_name)
 
 
-def get_and_dump_expanded(
-    subreddit, num_posts, keyword, lookback_days=360, dumppath="../data/"
-):
-    """ Bigger search: separate queries for keyword + each advice_synonym,
-    then concatenate results. In testing, this gets about 5x submissions."""
-    print("Looking at {}".format(subreddit))
-
-    best_page = requests.get(
-        "http://api.pushshift.io/reddit/search/submission/?subreddit={}&q={}+recommendations&before={}d&size={}&sort_type=score".format(
-            subreddit, keyword, lookback_days, num_posts
-        )
-    )
-    recc_page = requests.get(
-        "http://api.pushshift.io/reddit/search/submission/?subreddit={}&q={}+advice&before={}d&size={}&sort_type=score".format(
-            subreddit, keyword, lookback_days, num_posts
-        )
-    )
-    advice_page = requests.get(
-        "http://api.pushshift.io/reddit/search/submission/?subreddit={}&q={}+best&before={}d&size={}&sort_type=score".format(
-            subreddit, keyword, lookback_days, num_posts
-        )
-    )
-
-    submissions_data_best = json.loads(best_page.text)
-    submissions_data_recc = json.loads(recc_page.text)
-    submissions_data_advice = json.loads(advice_page.text)
-    # Combine results, and get all submission_ids
-    combined_submissions = (
-        submissions_data_best["data"]
-        + submissions_data_recc["data"]
-        + submissions_data_advice["data"]
-    )
-    submission_ids = get_submission_ids(combined_submissions, subreddit)
-
-    comment_list = []
-    for submission_id in submission_ids:
-        comment_list.append(get_assoc_comments(submission_id))
-    # Save submissions for later
-    posts = (combined_submissions, comment_list)
-
-    comment_file = save_posts_locally(posts, subreddit, lookback_days, dumppath="../data/")
-    return comment_file, comment_list
-
-
-def get_and_dump(subreddit, num_posts, keyword, lookback_days=360, use_S3 = False):
-    print("Looking at {}".format(subreddit))
-    h_page = requests.get(
-        "http://api.pushshift.io/reddit/search/submission/?subreddit={}&q=best+advice+recommendations&before={}d&size={}&sort_type=score".format(
-            subreddit, lookback_days, num_posts
-        )
-    )
-
-    # Get all relevant submissions, verify subreddit
-    submissions_data = json.loads(h_page.text)
-    submission_ids = get_submission_ids(submissions_data["data"], subreddit)
-
-    # Iterate thru submissions, get associated comments
-    comment_list = []
-    for submission_id in submission_ids:
-        comments = get_assoc_comments(submission_id)
-        comment_list.append(comments)
-
-    # Save submissions for later
-    posts = (submissions_data["data"], comment_list)
-
-    if use_S3:
-        comment_file = save_posts_to_S3(posts, subreddit, lookback_days)
-    else:
-        comment_file = save_posts_locally(posts, subreddit, lookback_days)
-
-    return comment_file, comment_list
-
-
-def check_for_comments(subreddit, use_S3, lookback_days=360):
+def check_for_comments(subreddit, use_s3, lookback_days=360):
     # True iff a corresponding comments file exists
     cmt_file = "{}/{}_{}.{}".format(
         "comment_data", subreddit, lookback_days, "json"
     )
-    if use_S3:
+    if use_s3:
         return helpers.check_for_data_S3(cmt_file)
     else:
         return os.path.isfile("../data/" + cmt_file)
 
 
-def count_comments(sr, lookback_days):
-    # Get number comments stored in 2D list
-    comments_path = "../data/comment_data/{}_{}.json".format(sr, lookback_days)
-    with open(comments_path) as f:
-        comments_2D = json.load(f)
-    return sum([len(comments) for comments in comments_2D])
 
 
-def keyword_to_subreddits(keyword):
-    """For a keyword (electronics category), return the top 
-    1-3 subreddits for it. In the future, generalize this
-    by an NLP model (Topic modeling of subreddits + similarity of word
-    representations). """
-    kw_to_subreddits = {
-        "Headphones": ["headphoneadvice"],
-        "Laptops": ["laptops", "suggestalaptop", "laptopdeals"],
-        "Computers": ["computers", "suggestapc", "pcmasterrace"],
-        "Keyboards": ["mechanicalkeyboards", "keyboards", "mechanicalkeyboardsUK"],
-        "Mouses": ["MouseReview"],
-        "Monitors": ["Monitors"],
-        "Tvs": ["Televisions"],
-        "Tablets": ["Tablets", "androidtablets", "ipad"],
-        "Smartwatches": ["smartwatch", "androidwear", "ioswear"],
-    }
-
-    return kw_to_subreddits[keyword]
 
 
-def get_recent_posts(keyword, num_posts=500, skip=True, use_S3 = False):
-    """ Queries pushshift.io to get submissions in the last year, from
-    subreddits the keyword maps to. Then gets all associated comments,
-    and saves comment data as reduced form."""
 
-    subreddits = keyword_to_subreddits(keyword)
-    for sr in subreddits:
-        if skip and check_for_comments(sr, use_S3):
-            print("Using exists data for {}".format(sr))
-        else:
-            print("Collecting new data for {}... Patientez ...".format(sr))
-            print(
-                "For {}, comments in {}".format(
-                    sr, get_and_dump(sr, num_posts, keyword, use_S3 = use_S3)[0]
-                )
-            )
 
-    return subreddits
+
+# def get_recent_posts(keyword, num_posts=500, skip=True, use_s3 = False):
+#     """ Queries pushshift.io to get submissions in the last year, from
+#     subreddits the keyword maps to. Then gets all associated comments,
+#     and saves comment data as reduced form."""
+
+#     subreddits = keyword_to_subreddits(keyword)
+#     for sr in subreddits:
+#         if skip and check_for_comments(sr, use_s3):
+#             print("Using exists data for {}".format(sr))
+#         else:
+#             print("Collecting new data for {}... Patientez ...".format(sr))
+#             print(
+#                 "For {}, comments in {}".format(
+#                     sr, get_and_dump(sr, num_posts, keyword, use_s3 = use_s3)[0]
+#                 )
+#             )
+#     return subreddits
+
+
+# def keyword_to_subreddits(keyword):
+#     """For a keyword (electronics category), return the top 
+#     1-3 subreddits for it. In the future, generalize this
+#     by an NLP model (Topic modeling of subreddits + similarity of word
+#     representations). """
+#     kw_to_subreddits = {
+#         "Headphones": ["headphoneadvice"],
+#         "Laptops": ["laptops", "suggestalaptop", "laptopdeals"],
+#         "Computers": ["computers", "suggestapc", "pcmasterrace"],
+#         "Keyboards": ["mechanicalkeyboards", "keyboards", "mechanicalkeyboardsUK"],
+#         "Mouses": ["MouseReview"],
+#         "Monitors": ["Monitors"],
+#         "Tvs": ["Televisions"],
+#         "Tablets": ["Tablets", "androidtablets", "ipad"],
+#         "Smartwatches": ["smartwatch", "androidwear", "ioswear"],
+#     }
+
+#     return kw_to_subreddits[keyword]

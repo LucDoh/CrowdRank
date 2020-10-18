@@ -4,4 +4,4 @@ from crowdrank import postprocessing
 from crowdrank import visualizer
 
 
-# class based, can run examples and more.
+# Class that groups the package together

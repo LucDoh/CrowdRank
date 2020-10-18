@@ -11,10 +11,11 @@ from crowdrank import ingester
 from crowdrank import interpreter
 from crowdrank import postprocessing
 from crowdrank import visualizer
+from crowdrank import helpers
 
 
 def handle_input():
-    # Handle user input (string keyword, boolean x-ref)
+    # Handle user input (string keyword, booleans)
     keyword = st.sidebar.selectbox(
         "What type of product are you looking for?",
         (
@@ -58,18 +59,23 @@ def load_page(keyword, xref, skip):
         progress_bar.progress(33)
         time.sleep(0.1)
 
-        # If results exist, skip ingestion
-        subreddits = ingester.get_recent_posts(keyword, num_posts=500, skip = skip)
+        use_s3 = True
+        print(sys.argv)
+        # If results exist can skip
+        # Ingest
+        dh = ingester.DataHandler(keyword, num_posts=500, skip = skip, use_s3 = use_s3)
+        dh.get_recent_posts()
+        subreddits = dh.subreddits
         progress_bar.progress(60)
+        # Interpret
         status_text.text("Interpreting...")
+        comments = interpreter.get_and_interpret(subreddits, keyword, use_s3=use_s3)
         # For 15,000 --> 5 mins
-        comments = interpreter.get_and_interpret(subreddits, keyword)
-
         progress_bar.progress(80)
         time.sleep(0.1)
+        # Postprocessing + viz
         status_text.text("Processing...")
-
-        df_ranking = postprocessing.postprocess(keyword, xref=xref)
+        df_ranking = postprocessing.postprocess(keyword, xref=xref, use_s3=use_s3)
         df_ranking.index.name = "Brand"
         df_ranking.index = df_ranking.index.str.title()
         print(df_ranking)
@@ -84,14 +90,12 @@ def load_page(keyword, xref, skip):
 
         # Extra info
         st.markdown("---")
-        subreddits = [sr.capitalize() for sr in ingester.keyword_to_subreddits(keyword)]
+        subreddits = [sr.capitalize() for sr in dh.keyword_to_subreddits()]
         st.write("Subreddits analyzed: {}".format(", ".join(subreddits)))
         st.write(
-            "Comments analyzed: {}".format(
-                sum([ingester.count_comments(sr.lower(), 360) for sr in subreddits])
+            "Comments analyzed: {}".format(len(comments)
             )
         )
-        # st.write("Top 5 brands: {}".format(", ".join(df_ranking.iloc[:5].index.values))
 
 
 if __name__ == "__main__":

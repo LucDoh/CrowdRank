@@ -2,6 +2,7 @@ import sys
 sys.path.append("..")
 from crowdrank import ingester
 from crowdrank import interpreter
+from crowdrank import helpers
 
 
 # Test 0: instatiate a Knowledgebase, count
@@ -54,10 +55,11 @@ def interpret_any_context():
 # Test 3: Check for bucket existence
 def test_is_ec2():
     try:
-        assert(ingester.bucket_exists())
+        assert(helpers.bucket_exists())
         print("Bucket exists (and on EC2)")
         return True
-    except:
+    except Exception as e:
+        print(e)
         print("Running locally or bucket DNE")
         return False
 

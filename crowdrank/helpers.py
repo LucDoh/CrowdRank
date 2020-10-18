@@ -54,6 +54,29 @@ def in_S3():
     except:
         return False
 
-        
+
+def count_comments(sr, lookback_days, use_s3=False):
+    # Get number comments stored in 2D list
+    comment_path = "comment_data/{}_{}.json".format(sr, lookback_days)
+    if use_s3:
+        s3 = boto3.resource('s3')
+        content_object = s3.Object('crowdsourced-data-reddit', comment_path)
+        comments_2D = json.loads(content_object.get()['Body'].read().decode('utf-8'))
+    else:
+        with open("../data/" + comment_path) as f:
+            comments_2D = json.load(f)
+    return sum([len(comments) for comments in comments_2D])
+
+# Helper functions
+def unpack_comments(comments_2D):
+    # Unpack List[List[JSON]] of comments, keep body and score:
+    comments_upvotes = []
+    for i in range(len(comments_2D)):
+        for comment in comments_2D[i]:
+            try:
+                comments_upvotes.append((comment["body"], comment["score"]))
+            except KeyError:
+                comments_upvotes.append((comment["body"], 1))
+    return comments_upvotes
 
 

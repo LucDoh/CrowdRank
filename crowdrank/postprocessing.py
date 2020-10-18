@@ -1,10 +1,19 @@
 import sys
 import json
 import pandas as pd
+import boto3
 from fuzzywuzzy import fuzz
 from collections import Counter
 from emoji import UNICODE_EMOJI
 
+
+## This module contains all the functions
+## for postprocessing "interpreted data"
+## Main function is postprocess(keyword, ...)
+## i) removes improbable entities (<= 2 chars)
+## ii) gets the top 20%
+## iii) combines entities, using fuzzy-matching + ii
+## Returns df of ranking and scores, x-referenced (brands)
 
 def is_emoji(s):
     return s in UNICODE_EMOJI
@@ -168,6 +177,7 @@ def postprocess_sentimentful_results(results, xref, known_brands):
     return scored_entities 
 
 def get_known_brands(keyword):
+    # Return only known electronics brands
     brands_path = (
         "../data/product_data/headphones_brands.txt"
         if (keyword == "Headphones")
@@ -178,27 +188,39 @@ def get_known_brands(keyword):
         known_brands = [line[:-1] for line in f]
     return known_brands
 
-
-
-
-def postprocess(
-    keyword, xref=True, lookback_days=360
-): 
-    """Postprocessing includes: fuzzy string matching,
-    removing 1 and 2 letter entities, and uses a list of
-    brands to make the final ranking."""
-
+def load_interpreted_local_data(sr, lookback_days):
     results_filepath = "../data/interpreted_data/{}_{}.json".format(
         keyword, lookback_days
     )
     with open(results_filepath, "r") as f:
-        results = json.loads(f.readlines()[0])
+        return json.loads(f.readlines()[0])
+        
+def load_interpreted_S3_data(sr, lookback_days):
+    key = "interpreted_data/{}_{}.json".format(sr, lookback_days)
+    s3 = boto3.resource('s3')
+    content_object = s3.Object('crowdsourced-data-reddit', key)
+    return json.loads(content_object.get()['Body'].read().decode('utf-8'))
+
+def save_result_df(df, keyword, lookback_days, use_s3):
+    if use_s3:
+        df.to_csv("s3://{}/results/{}_{}.csv".format('crowdsourced-data-reddit', keyword, lookback_days))
+    else:
+        df.to_csv("../data/results/{}_{}.csv".format(keyword, lookback_days))
+
+def postprocess(keyword, xref=True, lookback_days=360, use_s3 = False): 
+    """Postprocessing includes: fuzzy string matching,
+    removing 1 and 2 letter entities, and uses a list of
+    brands to make the final ranking."""
+    keyword = keyword.capitalize()
+    if use_s3:
+        results = load_interpreted_S3_data(keyword, lookback_days)
+    else:
+        results = load_interpreted_local_data(keyword, lookback_days)
 
     print("Number of entities: {}".format(len(results)))
     results = list(results)  # [["sony", 12], ..., ["wip",1]]
 
     known_brands = get_known_brands(keyword)
-
     ranking = postprocess_sentimentful_results(results, xref, known_brands)
 
     # Dataframe
@@ -206,12 +228,6 @@ def postprocess(
     df.columns = ["Sentiment", "Popularity", "Variance"]
     df = df.sort_values(by=["Sentiment"], ascending=False)
     df = df.round({"Sentiment": 2, "Variance": 2})
-
-    # Save final results:
-    out_path = "../data/results/{}_{}.csv".format(keyword, lookback_days)
-    df.to_csv(out_path)
-
-    # How about to S3?
-    
+    save_result_df(df, keyword, lookback_days, use_s3)
 
     return df

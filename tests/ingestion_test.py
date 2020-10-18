@@ -41,8 +41,10 @@ def full_ingestion_S3(use_S3):
     keyword = sys.argv[1]
     subreddit = sys.argv[2]
     num_posts = 1 if len(sys.argv) == 3 else sys.argv[3]
-    comments = ingester.get_recent_posts(keyword, num_posts, skip=False, use_S3 = use_S3)
-    assert(comments)
+    dh = ingester.DataHandler(keyword, num_posts=num_posts, skip = False, use_s3 = helpers.in_S3())
+    comment_bodys = dh.get_recent_posts()
+    print(comment_bodys)
+    assert True
 
 
 print(test_ingestion_pipeline())
