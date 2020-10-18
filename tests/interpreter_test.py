@@ -50,11 +50,19 @@ def interpret_any_context():
     print("Narrow: {}".format(prod_sentiments_narrow))
     assert len(prod_sentiments_wide) == len(prod_sentiments_narrow)
 
-
+# Test 3: Interpret and save to S3
+def save_interpretations_test():
+    subreddits = ['laptops']
+    keyword = 'laptops'
+    comments = interpreter.get_and_interpret(subreddits, keyword, 360, use_s3 = True)
+    print(len(comments))
 
 interpret_VADER_ntest()
-interpret_VADER_wtest()
 interpret_simple_test()
+
 
 print("Both...")
 interpret_any_context()
+
+print("Save to bucket test")
+save_interpretations_test()

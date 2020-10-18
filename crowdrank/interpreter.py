@@ -136,14 +136,16 @@ def get_local(sr, lookback_days=360):
     return unpack_comments(comments_2D)
 
 def save_to_S3(prod_sentiments, keyword, lookback_days):
+    # filepath + bucket_name + prod_sentiments
     s3 = boto3.resource('s3')
     file_name = "{}/{}_{}.json".format(
         "interpreted_data", keyword, lookback_days)
-    s3object = s3.Object("crowdsourced-reddit-data", file_name)
+    s3object = s3.Object("crowdsourced-data-reddit", file_name)
     s3object.put(
         Body=(bytes(json.dumps(prod_sentiments).encode('UTF-8')))
     ) 
     return
+
 # Main-like function, called in current pipeline
 def get_and_interpret(subreddits, keyword, lookback_days=360, use_s3 = False):
     """ Interpret community sentiments (scores) from a set of subreddits"""

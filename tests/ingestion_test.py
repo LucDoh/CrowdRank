@@ -3,6 +3,7 @@ sys.path.append("..")
 
 from crowdrank import ingester
 from crowdrank import interpreter
+from crowdrank import helpers
 
 
 ## Test 1: do a full ingestion with 3 CL arguments
@@ -10,7 +11,7 @@ def test_ingestion_pipeline():
     keyword = sys.argv[1]
     subreddit = sys.argv[2]
     num_posts = 1 if len(sys.argv) == 3 else sys.argv[3]
-    comments = ingester.get_and_dump(subreddit, num_posts, keyword, 360, dumppath="../data/")[0]
+    comments = ingester.get_and_dump(subreddit, num_posts, keyword, 360)[0]
     assert comments
     return comments
 
@@ -27,18 +28,25 @@ def test_get_comments():
 
 # Test 3: Check for bucket existence
 def test_is_ec2():
-    # is_ec2() not working on EC2.
-    # print("Running on EC2:", ingester.is_ec2())
     try:
         assert(ingester.bucket_exists())
         print("Bucket exists (and on EC2)")
+        return True
     except:
         print("Running locally or bucket DNE")
-    
+        return False
 
-    # If ec2 exists, push a test file to it
+# Test 4: Testing whole module
+def full_ingestion_S3(use_S3):
+    keyword = sys.argv[1]
+    subreddit = sys.argv[2]
+    num_posts = 1 if len(sys.argv) == 3 else sys.argv[3]
+    comments = ingester.get_recent_posts(keyword, num_posts, skip=True, use_S3 = use_S3)
+    assert(comments)
+
 
 print(test_ingestion_pipeline())
 print(test_get_comments())
 
-test_is_ec2()
+# Test full ingestion, based on system
+full_ingestion_S3(test_is_ec2())

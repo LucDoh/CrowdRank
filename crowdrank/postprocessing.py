@@ -167,6 +167,19 @@ def postprocess_sentimentful_results(results, xref, known_brands):
 
     return scored_entities 
 
+def get_known_brands(keyword):
+    brands_path = (
+        "../data/product_data/headphones_brands.txt"
+        if (keyword == "Headphones")
+        else "../data/product_data/brands.txt"
+    )
+    print("Brands path: {}".format(brands_path))
+    with open(brands_path, "r") as f:
+        known_brands = [line[:-1] for line in f]
+    return known_brands
+
+
+
 
 def postprocess(
     keyword, xref=True, lookback_days=360
@@ -184,14 +197,7 @@ def postprocess(
     print("Number of entities: {}".format(len(results)))
     results = list(results)  # [["sony", 12], ..., ["wip",1]]
 
-    brands_path = (
-        "../data/product_data/headphones_brands.txt"
-        if (keyword == "Headphones")
-        else "../data/product_data/brands.txt"
-    )
-    print("Brands path: {}".format(brands_path))
-    with open(brands_path, "r") as f:
-        known_brands = [line[:-1] for line in f]
+    known_brands = get_known_brands(keyword)
 
     ranking = postprocess_sentimentful_results(results, xref, known_brands)
 
@@ -201,8 +207,11 @@ def postprocess(
     df = df.sort_values(by=["Sentiment"], ascending=False)
     df = df.round({"Sentiment": 2, "Variance": 2})
 
-
+    # Save final results:
     out_path = "../data/results/{}_{}.csv".format(keyword, lookback_days)
     df.to_csv(out_path)
+
+    # How about to S3?
+    
 
     return df
