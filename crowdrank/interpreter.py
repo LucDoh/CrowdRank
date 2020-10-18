@@ -47,6 +47,7 @@ class Knowledgebase:
         return self.prod_sentiments
 
 
+
 def analyze_sentence_sentiment(sentence):
     """ Analyzes a sentence using VADER and returns the 
     compound score. Typical thresholds are:
@@ -81,7 +82,7 @@ def interpret_paragraph_narrow(comment, nlp):
         doc = nlp(s)
         sentiment_score = analyze_sentence_sentiment(s)
         for ent in doc.ents:
-            if ent.label == 383 or ent.label == 386:
+            if ent.label == 383 or ent.label == 386 or ent.text.lower() == 'apple':
                 prods_sentiments.append((ent.text.lower(), sentiment_score, comment[1]))
 
     return prods_sentiments
@@ -97,7 +98,7 @@ def interpret_paragraph_wide(comment, nlp):
     doc = nlp(comment[0])
     sentiment_score = analyze_sentence_sentiment(comment[0])
     for ent in doc.ents:
-        if ent.label == 383 or ent.label == 386:
+        if ent.label == 383 or ent.label == 386 or ent.text.lower() == 'apple':
             prods_sentiments.append((ent.text.lower(), sentiment_score, comment[1]))
 
     return prods_sentiments

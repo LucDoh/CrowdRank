@@ -1,5 +1,5 @@
 <p align="center">
-<img width="45%" src='static/CrowdRank_Logo.png'>
+<img width="40%" src='static/CrowdRank_Logo.png'>
 </p>
 <p align="center">
 <img src="https://img.shields.io/badge/python-3.6-blue.svg?style=flat" alt="made with python"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;

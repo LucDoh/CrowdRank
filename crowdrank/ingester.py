@@ -50,7 +50,7 @@ class DataHandler():
     # reprs).
         kw_subreddit = {
             "Headphones": ["headphoneadvice"],
-            "Laptops": ["laptops", "suggestalaptop", "laptopdeals"],
+            "Laptops": ["laptops", "suggestalaptop", "laptopdeals", "macbook"],
             "Computers": ["computers", "suggestapc", "pcmasterrace"],
             "Keyboards": ["mechanicalkeyboards", "keyboards", "mechanicalkeyboardsUK"],
             "Mouses": ["MouseReview"],
@@ -157,49 +157,3 @@ def check_for_comments(subreddit, use_s3, lookback_days=360):
         return helpers.check_for_data_S3(cmt_file)
     else:
         return os.path.isfile("../data/" + cmt_file)
-
-
-
-
-
-
-
-
-
-# def get_recent_posts(keyword, num_posts=500, skip=True, use_s3 = False):
-#     """ Queries pushshift.io to get submissions in the last year, from
-#     subreddits the keyword maps to. Then gets all associated comments,
-#     and saves comment data as reduced form."""
-
-#     subreddits = keyword_to_subreddits(keyword)
-#     for sr in subreddits:
-#         if skip and check_for_comments(sr, use_s3):
-#             print("Using exists data for {}".format(sr))
-#         else:
-#             print("Collecting new data for {}... Patientez ...".format(sr))
-#             print(
-#                 "For {}, comments in {}".format(
-#                     sr, get_and_dump(sr, num_posts, keyword, use_s3 = use_s3)[0]
-#                 )
-#             )
-#     return subreddits
-
-
-# def keyword_to_subreddits(keyword):
-#     """For a keyword (electronics category), return the top 
-#     1-3 subreddits for it. In the future, generalize this
-#     by an NLP model (Topic modeling of subreddits + similarity of word
-#     representations). """
-#     kw_to_subreddits = {
-#         "Headphones": ["headphoneadvice"],
-#         "Laptops": ["laptops", "suggestalaptop", "laptopdeals"],
-#         "Computers": ["computers", "suggestapc", "pcmasterrace"],
-#         "Keyboards": ["mechanicalkeyboards", "keyboards", "mechanicalkeyboardsUK"],
-#         "Mouses": ["MouseReview"],
-#         "Monitors": ["Monitors"],
-#         "Tvs": ["Televisions"],
-#         "Tablets": ["Tablets", "androidtablets", "ipad"],
-#         "Smartwatches": ["smartwatch", "androidwear", "ioswear"],
-#     }
-
-#     return kw_to_subreddits[keyword]

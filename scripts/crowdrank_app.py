@@ -59,7 +59,7 @@ def load_page(keyword, xref, skip):
         progress_bar.progress(33)
         time.sleep(0.1)
 
-        use_s3 = True
+        use_s3 = helpers.in_S3()
         print(sys.argv)
         # If results exist can skip
         # Ingest

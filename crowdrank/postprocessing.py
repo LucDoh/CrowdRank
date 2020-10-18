@@ -74,9 +74,8 @@ def aggregate_score(tuples):
     for tuple in tuples:
         total_votes += tuple[1]
         unscaled_sentiment += tuple[0] * tuple[1]
-
-    if total_votes == 0:
-        total_votes = 1  # Keep their opinion if 1 downvote
+        if total_votes == 0:
+            total_votes += 1  # Keep their opinion if 1 downvote
 
     mean_score = unscaled_sentiment / total_votes
 
@@ -147,10 +146,10 @@ def postprocess_results(results, known_brands):
     return Counter(result_dict)
 
 
-def get_top_entities(results, fraction=0.2):
+def get_top_entities(results, fraction=0.4):
     entities = [r[0].lower() for r in results]
     entity_counter = Counter(entities).most_common()
-    # Get top 20% as seed brands
+    # Get top 40% as seed brands
     top_entities = [
         e[0] for e in entity_counter[: len(entity_counter) // int(1 / fraction)]
     ]
@@ -188,25 +187,6 @@ def get_known_brands(keyword):
         known_brands = [line[:-1] for line in f]
     return known_brands
 
-def load_interpreted_local_data(sr, lookback_days):
-    results_filepath = "../data/interpreted_data/{}_{}.json".format(
-        keyword, lookback_days
-    )
-    with open(results_filepath, "r") as f:
-        return json.loads(f.readlines()[0])
-        
-def load_interpreted_S3_data(sr, lookback_days):
-    key = "interpreted_data/{}_{}.json".format(sr, lookback_days)
-    s3 = boto3.resource('s3')
-    content_object = s3.Object('crowdsourced-data-reddit', key)
-    return json.loads(content_object.get()['Body'].read().decode('utf-8'))
-
-def save_result_df(df, keyword, lookback_days, use_s3):
-    if use_s3:
-        df.to_csv("s3://{}/results/{}_{}.csv".format('crowdsourced-data-reddit', keyword, lookback_days))
-    else:
-        df.to_csv("../data/results/{}_{}.csv".format(keyword, lookback_days))
-
 def postprocess(keyword, xref=True, lookback_days=360, use_s3 = False): 
     """Postprocessing includes: fuzzy string matching,
     removing 1 and 2 letter entities, and uses a list of
@@ -231,3 +211,24 @@ def postprocess(keyword, xref=True, lookback_days=360, use_s3 = False):
     save_result_df(df, keyword, lookback_days, use_s3)
 
     return df
+
+
+
+def load_interpreted_local_data(sr, lookback_days):
+    results_filepath = "../data/interpreted_data/{}_{}.json".format(
+        sr, lookback_days
+    )
+    with open(results_filepath, "r") as f:
+        return json.loads(f.readlines()[0])
+        
+def load_interpreted_S3_data(sr, lookback_days):
+    key = "interpreted_data/{}_{}.json".format(sr, lookback_days)
+    s3 = boto3.resource('s3')
+    content_object = s3.Object('crowdsourced-data-reddit', key)
+    return json.loads(content_object.get()['Body'].read().decode('utf-8'))
+
+def save_result_df(df, keyword, lookback_days, use_s3):
+    if use_s3:
+        df.to_csv("s3://{}/results/{}_{}.csv".format('crowdsourced-data-reddit', keyword, lookback_days))
+    else:
+        df.to_csv("../data/results/{}_{}.csv".format(keyword, lookback_days))

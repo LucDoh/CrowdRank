@@ -52,27 +52,17 @@ def interpret_any_context():
     assert len(prod_sentiments_wide) == len(prod_sentiments_narrow)
     return prod_sentiments_wide
 
-# Test 3: Check for bucket existence
-def test_is_ec2():
-    try:
-        assert(helpers.bucket_exists())
-        print("Bucket exists (and on EC2)")
-        return True
-    except Exception as e:
-        print(e)
-        print("Running locally or bucket DNE")
-        return False
 
 # Test 4: Test saving to S3
 def test_saving_to_S3(test_data):
-    if test_is_ec2():
+    if helpers.in_S3():
         interpreter.save_to_S3(test_data, 'TEST', 0)
     
     assert(True)
 
 # Test 5: Full interpreter run
 def full_interpreter_test():
-    use_s3 = test_is_ec2()
+    use_s3 = helpers.in_S3()
     subreddits = ['laptops']
     keyword = 'laptops'
     comments = interpreter.get_and_interpret(subreddits, keyword, 360, use_s3 = use_s3)
