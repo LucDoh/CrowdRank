@@ -34,7 +34,7 @@ def get_submission_ids(combined_submissions, subreddit):
 
 
 def save_posts_locally(posts, subreddit, lookback_days, dumppath="../data/"):
-    # Save submissions & comments for later (TBD: S3)
+    # Save submissions & comments for later
     out_file = dumppath + "{}/{}_{}.json".format(
         "submission_data", subreddit, lookback_days
     )
@@ -182,8 +182,10 @@ def get_recent_posts(keyword, num_posts=500, skip=True, use_S3 = False):
 
     subreddits = keyword_to_subreddits(keyword)
     for sr in subreddits:
-        print("Checking if comments exist for {}".format(sr))
-        if skip and not check_for_comments(sr, use_S3):
+        if skip and check_for_comments(sr, use_S3):
+            print("Using exists data for {}".format(sr))
+        else:
+            print("Collecting new data for {}... Patientez ...".format(sr))
             print(
                 "For {}, comments in {}".format(
                     sr, get_and_dump(sr, num_posts, keyword, use_S3 = use_S3)[0]

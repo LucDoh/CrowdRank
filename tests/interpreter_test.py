@@ -49,20 +49,45 @@ def interpret_any_context():
     prod_sentiments_narrow = kb_test.interpret_with_sentiment("narrow")
     print("Narrow: {}".format(prod_sentiments_narrow))
     assert len(prod_sentiments_wide) == len(prod_sentiments_narrow)
+    return prod_sentiments_wide
 
-# Test 3: Interpret and save to S3
-def save_interpretations_test():
+# Test 3: Check for bucket existence
+def test_is_ec2():
+    try:
+        assert(ingester.bucket_exists())
+        print("Bucket exists (and on EC2)")
+        return True
+    except:
+        print("Running locally or bucket DNE")
+        return False
+
+# Test 4: Test saving to S3
+def test_saving_to_S3(test_data):
+    if test_is_ec2():
+        interpreter.save_to_S3(test_data, 'TEST', 0)
+    
+    assert(True)
+
+# Test 5: Full interpreter run
+def full_interpreter_test():
+    use_s3 = test_is_ec2()
     subreddits = ['laptops']
     keyword = 'laptops'
-    comments = interpreter.get_and_interpret(subreddits, keyword, 360, use_s3 = True)
+    comments = interpreter.get_and_interpret(subreddits, keyword, 360, use_s3 = use_s3)
     print(len(comments))
+
+
+
 
 interpret_VADER_ntest()
 interpret_simple_test()
 
 
 print("Both...")
-interpret_any_context()
+prod_sentiments_test = interpret_any_context()
 
 print("Save to bucket test")
-save_interpretations_test()
+test_saving_to_S3(prod_sentiments_test)
+
+print("Full interpreter test")
+full_interpreter_test()

@@ -126,13 +126,22 @@ def unpack_comments(comments_2D):
     return comments_upvotes
 
 
-def get_local(sr, lookback_days=360):
+def get_comments_local(sr, lookback_days = 360):
     # Get comments
     comments_path = "../data/comment_data/{}_{}.json".format(sr, lookback_days)
     # List of lists of JSON objects (which are comment objects)
     with open(comments_path) as f:
         comments_2D = json.load(f)
 
+    return unpack_comments(comments_2D)
+
+def get_comments_S3(sr, lookback_days = 360):
+    # Get comments
+    key = "comment_data/{}_{}.json".format(sr, lookback_days)
+    s3 = boto3.resource('s3')
+    content_object = s3.Object('crowdsourced-data-reddit', key)
+    comments_2D = json.loads(content_object.get()['Body'].read().decode('utf-8'))
+    #s3.Bucket('crowdsourced-data-reddit')
     return unpack_comments(comments_2D)
 
 def save_to_S3(prod_sentiments, keyword, lookback_days):
@@ -153,7 +162,10 @@ def get_and_interpret(subreddits, keyword, lookback_days=360, use_s3 = False):
     comments_upvotes = []
     for sr in subreddits:
         print(sr)
-        comments_upvotes.extend(get_local(sr, lookback_days))
+        if use_s3:
+            comments_upvotes.extend(get_comments_S3(sr, lookback_days))
+        else:
+            comments_upvotes.extend(get_comments_local(sr, lookback_days))
 
     # 2) Build knowledgebase from list of comments
     kb = Knowledgebase(comments_upvotes)
