@@ -30,10 +30,13 @@ def test_is_ec2():
     # is_ec2() not working on EC2.
     # print("Running on EC2:", ingester.is_ec2())
     try:
-        ingester.bucket_exists()
-        print("Bucket exists")
+        assert(ingester.bucket_exists())
+        print("Bucket exists (and on EC2)")
     except:
-        print("Bucket DNE or not an EC2 instance")
+        print("Running locally or bucket DNE")
+    
+
+    # If ec2 exists, push a test file to it
 
 print(test_ingestion_pipeline())
 print(test_get_comments())

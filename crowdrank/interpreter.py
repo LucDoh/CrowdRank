@@ -4,6 +4,7 @@ import spacy
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from collections import Counter
 import sys
+import boto3
 
 
 class Knowledgebase:
@@ -134,8 +135,17 @@ def get_local(sr, lookback_days=360):
 
     return unpack_comments(comments_2D)
 
+def save_to_S3(prod_sentiments, keyword, lookback_days):
+    s3 = boto3.resource('s3')
+    file_name = "{}/{}_{}.json".format(
+        "interpreted_data", keyword, lookback_days)
+    s3object = s3.Object("crowdsourced-reddit-data", file_name)
+    s3object.put(
+        Body=(bytes(json.dumps(prod_sentiments).encode('UTF-8')))
+    ) 
+    return
 # Main-like function, called in current pipeline
-def get_and_interpret(subreddits, keyword, lookback_days=360):
+def get_and_interpret(subreddits, keyword, lookback_days=360, use_s3 = False):
     """ Interpret community sentiments (scores) from a set of subreddits"""
     # 1) Load comments and comment scores
     comments_upvotes = []
@@ -152,8 +162,11 @@ def get_and_interpret(subreddits, keyword, lookback_days=360):
     print("Number of entities found: {}".format(len(prod_sentiments)))
 
     # 4) Save results, in the form [(e_00, s_00, a_00), ... (e_Nm, s_Nm, a_Nm)]
-    file_out = "../data/interpreted_data/{}_{}.json".format(keyword, lookback_days)
-    with open(file_out, "w") as f:
-        json.dump(prod_sentiments, f)
+    if not use_s3:
+        file_out = "../data/interpreted_data/{}_{}.json".format(keyword, lookback_days)
+        with open(file_out, "w") as f:
+            json.dump(prod_sentiments, f)
+    else:
+        save_to_S3(prod_sentiments, keyword, lookback_days)
 
     return prod_sentiments

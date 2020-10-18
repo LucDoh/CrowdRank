@@ -5,6 +5,7 @@ import nltk
 from collections import Counter
 import sys
 import os.path
+import boto3
 
 # Functions for querying Pushshift.io API for relevant submissions,
 # and storing all associtaed comments
@@ -63,21 +64,29 @@ def save_posts(posts, subreddit, lookback_days, dumppath="../data/"):
 
     return out_file
 
- 
-def is_ec2():
-    # Check if on EC2 (not local)
-    import socket
-    try:
-        socket.gethostbyname('instance-data.ec2.internal.')
-        return True
-    except socket.gaierror:
-        return False
+    def bucket_exists():
+        # Check that main bucket exists
+        import boto3
+        s3 = boto3.resource('s3')
+        return s3.Bucket('crowdsourced-data-reddit') in s3.buckets.all()
 
-def bucket_exists():
-    # Check that main bucket exists
-    import boto3
-    s3 = boto3.resource('s3')
-    return s3.Bucket('crowdsourced-data-reddit') in s3.buckets.all()
+
+    def save_to_S3(posts, subreddit, lookback_days, bucket_name = 'crowdsourced-data-reddit'):
+        # WIP
+        s3 = boto3.resource('s3')
+        file_name = "{}/{}_{}.{}".format(
+            "submission_data", subreddit, lookback_days, "json")
+        s3object = s3.Object(bucket_name, file_name)
+        s3object.put(
+            Body=(bytes(json.dumps(posts[0]).encode('UTF-8')))
+        ) 
+        
+        file_name = "{}/{}_{}.{}".format(
+            "comment_data", subreddit, lookback_days, "json")
+        s3object = s3.Object(bucket_name, file_name)
+        s3object.put(
+            Body=(bytes(json.dumps(posts[1]).encode('UTF-8')))
+        )   
 
 
 def get_and_dump_expanded(
