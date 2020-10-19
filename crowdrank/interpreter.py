@@ -151,7 +151,6 @@ def get_and_interpret(subreddits, keyword, lookback_days=360, use_s3 = False):
     # 1) Load comments and comment scores
     comments_upvotes = []
     for sr in subreddits:
-        print(sr)
         if use_s3:
             comments_upvotes.extend(get_comments_S3(sr, lookback_days))
         else:
@@ -159,6 +158,7 @@ def get_and_interpret(subreddits, keyword, lookback_days=360, use_s3 = False):
 
     # 2) Build knowledgebase from list of comments
     kb = Knowledgebase(comments_upvotes)
+    print("Subreddits: {}".format(subreddits))
     print("Comments analyzed: {}".format(len(kb.comments)))
 
     # 3) Extract product names and sentiments towards them

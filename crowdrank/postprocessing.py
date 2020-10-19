@@ -196,8 +196,7 @@ def postprocess(keyword, xref=True, lookback_days=360, use_s3 = False):
         results = load_interpreted_S3_data(keyword, lookback_days)
     else:
         results = load_interpreted_local_data(keyword, lookback_days)
-
-    print("Number of entities: {}".format(len(results)))
+        
     results = list(results)  # [["sony", 12], ..., ["wip",1]]
 
     known_brands = get_known_brands(keyword)
@@ -205,6 +204,8 @@ def postprocess(keyword, xref=True, lookback_days=360, use_s3 = False):
 
     # Dataframe
     df = pd.DataFrame.from_dict(ranking, orient="index")
+    if df.empty:
+        return df
     df.columns = ["Sentiment", "Popularity", "Variance"]
     df = df.sort_values(by=["Sentiment"], ascending=False)
     df = df.round({"Sentiment": 2, "Variance": 2})

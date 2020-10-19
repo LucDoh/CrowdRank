@@ -31,7 +31,7 @@ class DataHandler():
     def get_recent_posts(self):
         for sr in self.subreddits:
             if self.skip and check_for_comments(sr, self.use_s3):
-                print("Using exists data for {}".format(sr))
+                print("Using existing data for {}".format(sr))
                 comments = [[]]
             else:
                 print("Collecting new data for {}... Patientez ...".format(sr))
@@ -48,6 +48,7 @@ class DataHandler():
     # 1-3 subreddits. Later: generalize this
     # (Topic modeling of subreddits + similarity to word
     # reprs).
+        print(self.keyword)
         kw_subreddit = {
             "Headphones": ["headphoneadvice"],
             "Laptops": ["laptops", "suggestalaptop", "laptopdeals", "macbook"],
@@ -62,7 +63,7 @@ class DataHandler():
 
         if not self.keyword in kw_subreddit:
             print("None found, using BuyItForLife")
-            return "BIFL"
+            return ["BIFL"]
         return kw_subreddit[self.keyword]
 
 
