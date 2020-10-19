@@ -12,6 +12,7 @@ from . import helpers
 class Knowledgebase:
     """Class for interpreting Reddit comments/posts, from (comment_text, upvotes)
     tuples. Other features to be included: datetime """
+
     def __init__(self, comments):
         # comments = [(text_0, upvotes_0),...]
         self.comments = comments
@@ -45,7 +46,6 @@ class Knowledgebase:
 
         self.prod_sentiments = product_sentiments
         return self.prod_sentiments
-
 
 
 def analyze_sentence_sentiment(sentence):
@@ -82,7 +82,7 @@ def interpret_paragraph_narrow(comment, nlp):
         doc = nlp(s)
         sentiment_score = analyze_sentence_sentiment(s)
         for ent in doc.ents:
-            if ent.label == 383 or ent.label == 386 or ent.text.lower() == 'apple':
+            if ent.label == 383 or ent.label == 386 or ent.text.lower() == "apple":
                 prods_sentiments.append((ent.text.lower(), sentiment_score, comment[1]))
 
     return prods_sentiments
@@ -98,7 +98,7 @@ def interpret_paragraph_wide(comment, nlp):
     doc = nlp(comment[0])
     sentiment_score = analyze_sentence_sentiment(comment[0])
     for ent in doc.ents:
-        if ent.label == 383 or ent.label == 386 or ent.text.lower() == 'apple':
+        if ent.label == 383 or ent.label == 386 or ent.text.lower() == "apple":
             prods_sentiments.append((ent.text.lower(), sentiment_score, comment[1]))
 
     return prods_sentiments
@@ -116,7 +116,7 @@ def interpret_text(text, nlp):
     return prod_orgs
 
 
-def get_comments_local(sr, lookback_days = 360):
+def get_comments_local(sr, lookback_days=360):
     # Get comments
     comments_path = "../data/comment_data/{}_{}.json".format(sr, lookback_days)
     # List of lists of JSON objects (which are comment objects)
@@ -125,28 +125,28 @@ def get_comments_local(sr, lookback_days = 360):
 
     return helpers.unpack_comments(comments_2D)
 
-def get_comments_S3(sr, lookback_days = 360):
+
+def get_comments_S3(sr, lookback_days=360):
     # Get comments
     key = "comment_data/{}_{}.json".format(sr, lookback_days)
-    s3 = boto3.resource('s3')
-    content_object = s3.Object('crowdsourced-data-reddit', key)
-    comments_2D = json.loads(content_object.get()['Body'].read().decode('utf-8'))
-    #s3.Bucket('crowdsourced-data-reddit')
+    s3 = boto3.resource("s3")
+    content_object = s3.Object("crowdsourced-data-reddit", key)
+    comments_2D = json.loads(content_object.get()["Body"].read().decode("utf-8"))
+    # s3.Bucket('crowdsourced-data-reddit')
     return helpers.unpack_comments(comments_2D)
+
 
 def save_to_S3(prod_sentiments, keyword, lookback_days):
     # filepath + bucket_name + prod_sentiments
-    s3 = boto3.resource('s3')
-    file_name = "{}/{}_{}.json".format(
-        "interpreted_data", keyword, lookback_days)
+    s3 = boto3.resource("s3")
+    file_name = "{}/{}_{}.json".format("interpreted_data", keyword, lookback_days)
     s3object = s3.Object("crowdsourced-data-reddit", file_name)
-    s3object.put(
-        Body=(bytes(json.dumps(prod_sentiments).encode('UTF-8')))
-    ) 
+    s3object.put(Body=(bytes(json.dumps(prod_sentiments).encode("UTF-8"))))
     return
 
+
 # Main-like function, called in current pipeline
-def get_and_interpret(subreddits, keyword, lookback_days=360, use_s3 = False):
+def get_and_interpret(subreddits, keyword, lookback_days=360, use_s3=False):
     """ Interpret community sentiments (scores) from a set of subreddits"""
     # 1) Load comments and comment scores
     comments_upvotes = []
@@ -173,4 +173,4 @@ def get_and_interpret(subreddits, keyword, lookback_days=360, use_s3 = False):
     else:
         save_to_S3(prod_sentiments, keyword, lookback_days)
 
-    return comments_upvotes #prod_sentiments
+    return comments_upvotes

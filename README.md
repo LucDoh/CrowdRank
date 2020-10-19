@@ -37,6 +37,18 @@ http://54.177.99.61:8501
 
 (Deployed using AWS on an EC2 instance with S3 storage)  
 
+## Package
+Run the package to see the best rankings of a product (e.g. laptops):
+
+    python crowdrank_simple.py laptops
+
+(inside scripts)
+
+CrowdRank has 3 main modules: *ingester*, *interpreter*, *postprocessing*, which do the bulk of the work. Supporting functions are in the *helpers* and *visualizer* modules. The above script will soon be replaced by a single call to *ranker*:
+
+    from crowdrank import ranker  
+    df_ranking = ranker.rank('laptops')  
+
 ## Installing
 Clone the repository:  
 
@@ -50,11 +62,3 @@ Install requirements:
 
     pip install -r requirements.txt  
     python -m spacy download en_core_web_md
-
-## Package
-CrowdRank has 3 main modules: ingester, interpreter, postprocessing, which do the bulk of the work. Supporting functions are found in the helpers and visualizer modules. 
-
-I wanted to make this accessible from a single call:
-
-    from crowdrank import ranker  
-    ranking = ranker.rank('laptops')  

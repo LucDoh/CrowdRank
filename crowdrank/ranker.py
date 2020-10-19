@@ -5,11 +5,11 @@ from . import visualizer
 from . import helpers
 
 
-def rank(keyword, num_posts = 500, skip = True):
+def rank(keyword, num_posts=500, skip=True):
     # Function that does end-to-end run
     use_s3 = helpers.in_S3()
     # 1) Ingest
-    dh = ingester.DataHandler(keyword, num_posts=500, skip = skip, use_s3 = use_s3)
+    dh = ingester.DataHandler(keyword, num_posts=500, skip=skip, use_s3=use_s3)
     dh.get_recent_posts()
     # 2) Interpret
     comments = interpreter.get_and_interpret(dh.subreddits, keyword, use_s3=use_s3)

@@ -15,8 +15,10 @@ from emoji import UNICODE_EMOJI
 ## iii) combines entities, using fuzzy-matching + ii
 ## Returns df of ranking and scores, x-referenced (brands)
 
+
 def is_emoji(s):
     return s in UNICODE_EMOJI
+
 
 def combine_scorevectors(vec_1, vec_2):
     """Combining two entity-scores, e.g. 
@@ -24,6 +26,7 @@ def combine_scorevectors(vec_1, vec_2):
     total_agreements = vec_1[2] + vec_2[2]
     normed_sentiment = (vec_1[1] * vec_1[2] + vec_2[1] * vec_2[2]) / total_agreements
     return (vec_1[0], normed_sentiment, total_agreements)
+
 
 def check_match(entity_1, entity_2, threshold=95):
     return fuzz.partial_ratio(entity_1, entity_2) >= threshold
@@ -129,7 +132,7 @@ def fuzzy_matching(list_of_strs):
 
 
 def confirm_known_brands(results, known_brands):
-    '''Crossreference with a list of known_brands'''
+    """Crossreference with a list of known_brands"""
     result_dict = {}
     for r in results:
         if r[0] in set(known_brands):
@@ -173,7 +176,8 @@ def postprocess_sentimentful_results(results, xref, known_brands):
             if key in known_brands
         }
 
-    return scored_entities 
+    return scored_entities
+
 
 def get_known_brands(keyword):
     # Return only known electronics brands
@@ -187,7 +191,8 @@ def get_known_brands(keyword):
         known_brands = [line[:-1] for line in f]
     return known_brands
 
-def postprocess(keyword, xref=True, lookback_days=360, use_s3 = False): 
+
+def postprocess(keyword, xref=True, lookback_days=360, use_s3=False):
     """Postprocessing includes: fuzzy string matching,
     removing 1 and 2 letter entities, and uses a list of
     brands to make the final ranking."""
@@ -196,7 +201,7 @@ def postprocess(keyword, xref=True, lookback_days=360, use_s3 = False):
         results = load_interpreted_S3_data(keyword, lookback_days)
     else:
         results = load_interpreted_local_data(keyword, lookback_days)
-        
+
     results = list(results)  # [["sony", 12], ..., ["wip",1]]
 
     known_brands = get_known_brands(keyword)
@@ -214,22 +219,25 @@ def postprocess(keyword, xref=True, lookback_days=360, use_s3 = False):
     return df
 
 
-
 def load_interpreted_local_data(sr, lookback_days):
-    results_filepath = "../data/interpreted_data/{}_{}.json".format(
-        sr, lookback_days
-    )
+    results_filepath = "../data/interpreted_data/{}_{}.json".format(sr, lookback_days)
     with open(results_filepath, "r") as f:
         return json.loads(f.readlines()[0])
-        
+
+
 def load_interpreted_S3_data(sr, lookback_days):
     key = "interpreted_data/{}_{}.json".format(sr, lookback_days)
-    s3 = boto3.resource('s3')
-    content_object = s3.Object('crowdsourced-data-reddit', key)
-    return json.loads(content_object.get()['Body'].read().decode('utf-8'))
+    s3 = boto3.resource("s3")
+    content_object = s3.Object("crowdsourced-data-reddit", key)
+    return json.loads(content_object.get()["Body"].read().decode("utf-8"))
+
 
 def save_result_df(df, keyword, lookback_days, use_s3):
     if use_s3:
-        df.to_csv("s3://{}/results/{}_{}.csv".format('crowdsourced-data-reddit', keyword, lookback_days))
+        df.to_csv(
+            "s3://{}/results/{}_{}.csv".format(
+                "crowdsourced-data-reddit", keyword, lookback_days
+            )
+        )
     else:
         df.to_csv("../data/results/{}_{}.csv".format(keyword, lookback_days))
