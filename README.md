@@ -2,8 +2,8 @@
 <img width="40%" src='static/CrowdRank_Logo.png'>
 </p>
 <p align="center">
-<img src="https://img.shields.io/badge/python-3.6-blue.svg?style=flat" alt="made with python"> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-<img src="https://img.shields.io/badge/code%20style-black-000000.svg?style=flat" alt="made with python">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<img src="https://img.shields.io/badge/python-3.6-blue.svg?style=flat" alt="made with python"> &nbsp;&nbsp;&nbsp;
+<img src="https://img.shields.io/badge/code%20style-black-000000.svg?style=flat" alt="made with python">&nbsp;&nbsp;&nbsp;
 <img src="https://img.shields.io/badge/license-MIT-400080.svg?style=flat" alt="made with python"> 
 </p>
 
