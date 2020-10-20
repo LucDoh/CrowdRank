@@ -186,7 +186,6 @@ def get_known_brands(keyword):
         if (keyword == "Headphones")
         else "../data/product_data/brands.txt"
     )
-    print("Brands path: {}".format(brands_path))
     with open(brands_path, "r") as f:
         known_brands = [line[:-1] for line in f]
     return known_brands

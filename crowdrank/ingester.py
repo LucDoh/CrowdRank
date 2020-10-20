@@ -54,7 +54,7 @@ class DataHandler:
         print(self.keyword)
         kw_subreddit = {
             "Headphones": ["headphoneadvice"],
-            "Laptops": ["laptops", "suggestalaptop", "laptopdeals", "macbook"],
+            "Laptops": ["laptops", "suggestalaptop", "laptop"],
             "Computers": ["computers", "suggestapc", "pcmasterrace"],
             "Keyboards": ["mechanicalkeyboards", "keyboards", "mechanicalkeyboardsUK"],
             "Mouses": ["MouseReview"],
@@ -72,18 +72,26 @@ class DataHandler:
 
 def get_and_dump(subreddit, num_posts, keyword, lookback_days=360, use_s3=False):
     print("Looking at {}".format(subreddit))
-    h_page = requests.get(
-        "http://api.pushshift.io/reddit/search/submission/?subreddit={}&q=best+advice+recommendations&before={}d&size={}&sort_type=score".format(
-            subreddit, lookback_days, num_posts
-        )
-    )
+    combined_submissions = []
 
-    # Get all relevant submissions, verify subreddit
-    submissions_data = json.loads(h_page.text)
-    submission_ids = get_submission_ids(submissions_data["data"], subreddit)
+    for syn in ('advice', 'best', 'recommend'):
+        h_page = requests.get(
+            "http://api.pushshift.io/reddit/search/submission/?subreddit={}&title={}&before={}d&size={}&sort_type=num_comments".format(
+                subreddit, syn, lookback_days, num_posts
+            )
+        )
+
+        # Get all relevant submissions, verify subreddit
+        submissions_data = json.loads(h_page.text)
+
+        combined_submissions.extend(submissions_data['data'])
+    
+    submissions_data = combined_submissions
+
+    submission_ids = get_submission_ids(submissions_data, subreddit)
     print(
         "Submissions from {}: {} ({})".format(
-            subreddit, len(submission_ids), len(submissions_data["data"])
+            subreddit, len(submission_ids), len(submissions_data)
         )
     )
     # Iterate thru submissions, get associated comments
@@ -93,7 +101,7 @@ def get_and_dump(subreddit, num_posts, keyword, lookback_days=360, use_s3=False)
         comment_list.append(comments)
 
     # Save submissions for later
-    posts = (submissions_data["data"], comment_list)
+    posts = (submissions_data , comment_list)
 
     if use_s3:
         comment_file = save_posts_to_S3(posts, subreddit, lookback_days)

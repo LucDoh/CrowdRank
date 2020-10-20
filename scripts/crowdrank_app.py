@@ -17,7 +17,7 @@ from crowdrank import helpers
 def handle_input():
     # Handle user input (string keyword, booleans)
     keyword = st.sidebar.selectbox(
-        "What type of product are you looking for?",
+        "Which product are you looking for?",
         (
             "",
             "Headphones",
@@ -32,9 +32,8 @@ def handle_input():
         ),
     )
 
-    xref_response = st.sidebar.selectbox("Cross-reference brands?", ("Yes", "No"))
-    xref = xref_response == "Yes"
     recollect = st.sidebar.selectbox('Get new data?', ('No', 'Yes'))
+    xref = True # Default to True
     return keyword, xref, recollect == 'Yes'
 
 
@@ -65,11 +64,10 @@ def load_page(keyword, xref, skip):
         # Ingest
         dh = ingester.DataHandler(keyword, num_posts=500, skip = skip, use_s3 = use_s3)
         dh.get_recent_posts()
-        subreddits = dh.subreddits
         progress_bar.progress(60)
         # Interpret
         status_text.text("Interpreting...")
-        comments = interpreter.get_and_interpret(subreddits, keyword, use_s3=use_s3)
+        comments = interpreter.get_and_interpret(dh.subreddits, keyword, use_s3=use_s3)
         # For 15,000 --> 5 mins
         progress_bar.progress(80)
         time.sleep(0.1)

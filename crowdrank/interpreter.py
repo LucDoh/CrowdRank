@@ -1,9 +1,10 @@
+import sys
 import json
 import requests
+import numpy as np
 import spacy
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from collections import Counter
-import sys
 import boto3
 
 from . import helpers
@@ -13,11 +14,11 @@ class Knowledgebase:
     """Class for interpreting Reddit comments/posts, from (comment_text, upvotes)
     tuples. Other features to be included: datetime """
 
-    def __init__(self, comments):
+    def __init__(self, comments, context = 'wide'):
         # comments = [(text_0, upvotes_0),...]
         self.comments = comments
         self.prod_sentiments = []
-        self.context = "wide"
+        self.context = context
         self.nlp = self.initialize_spacy()
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
 
@@ -96,7 +97,10 @@ def interpret_paragraph_wide(comment, nlp):
     mention a product. (Often) """
     prods_sentiments = []
     doc = nlp(comment[0])
-    sentiment_score = analyze_sentence_sentiment(comment[0])
+    #sentiment_score = analyze_sentence_sentiment(comment[0])
+    sentences = [sent.string.strip() for sent in doc.sents]
+    scores = [analyze_sentence_sentiment(s) for s in sentences]
+    sentiment_score = np.average(scores)
     for ent in doc.ents:
         if ent.label == 383 or ent.label == 386 or ent.text.lower() == "apple":
             prods_sentiments.append((ent.text.lower(), sentiment_score, comment[1]))

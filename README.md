@@ -8,7 +8,7 @@
 </p>
 
 ## Description
-CrowdRank is a package for interpreting community sentiments about brands and products from Reddit data. From a single keyword describing a product category (headphones, computers, laptops, tvs), CrowdRank will skim through and interpret thousands of relevant comments, aggregate the results, and give back a ranking of the best brands in the space.
+CrowdRank is a package for interpreting community sentiments about brands and products from Reddit data. From a single product name (headphones, computers, laptops, tvs), CrowdRank skims through thousands of relevant comments, aggregates and scores the results, and gives back a ranking of the best brands in the space.
 
 
 Stack: Python, AWS (EC2 & S3), JSON.  
@@ -35,10 +35,10 @@ Or simply use the app here:
 
 http://54.177.99.61:8501  
 
-(Deployed using AWS on an EC2 instance with S3 storage)  
+(Deployed on an EC2 instance with data on S3)  
 
 ## Package
-Run the package to see the best rankings of a product (e.g. laptops):
+Run the package to see the best brands of a product (e.g. laptops):
 
     python crowdrank_simple.py laptops
 
