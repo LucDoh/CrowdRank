@@ -10,21 +10,19 @@ import time
 
 
 def pie_plot(df_ranking):
-    # Courtesy of matplotlib.org...
     # Pie chart, slices are ordered and plotted counter-clockwise:
+    # (Courtesy of matplotlib.org...)
     labels = df_ranking.index
     sizes = df_ranking.Popularity.values
     fig1, ax = plt.subplots()
     ax.pie(sizes, labels=labels, autopct="%1.f%%", startangle=75)
-    ax.axis("equal")  # Equal aspect ratio ensures that pie is drawn as a circle.
+    ax.axis("equal") 
     st.pyplot()
 
 
 def clean_for_pie(df_ranking):
     df_ranking = df_ranking.sort_values(by=["Popularity"])
     mask = df_ranking["Popularity"] > 0.02 * df_ranking["Popularity"].sum()
-    # other_perc = df_ranking[~mask]['Popularity'].sum()
-    # df_ranking['Other'] = [0, other_perc, 0]
     df_ranking = df_ranking[mask]
     return df_ranking
 
@@ -44,7 +42,7 @@ def my_autopct(pct):
 
 
 def combined_plot(df_ranking):
-    # Plots a community sentiment barplot and number of voters piechart
+    # Plots a community sentiment barplot and % of total mentions piechart
     fig, axs = plt.subplots(1, 2, figsize=(12, 5))
 
     plt.subplots_adjust(wspace=0.35)

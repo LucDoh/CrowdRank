@@ -60,18 +60,18 @@ def load_page(keyword, xref, skip):
 
         use_s3 = helpers.in_S3()
         print(sys.argv)
-        # If results exist can skip
-        # Ingest
+        # Run crowdrank step-by-step:
+        # 1) Ingest
         dh = ingester.DataHandler(keyword, num_posts=500, skip = skip, use_s3 = use_s3)
         dh.get_recent_posts()
         progress_bar.progress(60)
-        # Interpret
+        # 2) Interpret
         status_text.text("Interpreting...")
         comments = interpreter.get_and_interpret(dh.subreddits, keyword, use_s3=use_s3)
         # For 15,000 --> 5 mins
         progress_bar.progress(80)
         time.sleep(0.1)
-        # Postprocessing + viz
+        # 3) Postprocessing
         status_text.text("Processing...")
         df_ranking = postprocessing.postprocess(keyword, xref=xref, use_s3=use_s3)
         df_ranking.index.name = "Brand"

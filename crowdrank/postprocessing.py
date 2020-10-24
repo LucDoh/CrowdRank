@@ -7,9 +7,8 @@ from collections import Counter
 from emoji import UNICODE_EMOJI
 
 
-## This module contains all the functions
-## for postprocessing "interpreted data"
-## Main function is postprocess(keyword, ...)
+## This module contains all the functions for postprocessing
+## "interpreted data". The main function is postprocess(keyword, ...):
 ## i) removes improbable entities (<= 2 chars)
 ## ii) gets the top 20%
 ## iii) combines entities, using fuzzy-matching + ii

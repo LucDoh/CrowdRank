@@ -8,14 +8,12 @@ import os.path
 import boto3
 from . import helpers
 
-# Functions for querying Pushshift.io API for relevant submissions,
-# and storing all associtaed comments
-
 
 class DataHandler:
-    """Data-handling class. Attributes are parameters about the 
-    search (input and inferred) and data (comments, submissions),"""
-
+    """Data-handling class. If data does not exist on hand,
+    queries Pushshift.io API for relevant submissions and 
+    associated comments. Attributes are search parameters 
+    (input and inferred) and data (comments & submissions),"""
     def __init__(self, keyword, num_posts, skip=True, use_s3=False, lookback_days=360):
         self.keyword = keyword.capitalize()
         self.num_posts = num_posts
@@ -39,18 +37,15 @@ class DataHandler:
                 comments = [[]]
             else:
                 print("Collecting new data for {}... Patientez ...".format(sr))
-                comment_file, comments = get_and_dump(
-                    sr, self.num_posts, self.keyword, self.lookback, self.use_s3
-                )
+                comment_file, comments = self.get_and_dump(sr) #self.num_posts, self.keyword, self.lookback, self.use_s3
                 print("For {}, comments in {}".format(sr, comment_file))
         self.comments = helpers.unpack_comments(comments)
         return self.comments
 
     def keyword_to_subreddits(self):
-        # For each keyword (electronics category) top
-        # 1-3 subreddits. Later: generalize this
-        # (Topic modeling of subreddits + similarity to word
-        # reprs).
+        # For each keyword (electronics category) top 1-3 subreddits.
+        # Later: generalize by topic modeling subreddits and getting
+        # most relevant by comparing their similarity to the keyword.
         print(self.keyword)
         kw_subreddit = {
             "Headphones": ["headphoneadvice"],
@@ -70,54 +65,59 @@ class DataHandler:
         return kw_subreddit[self.keyword]
 
 
-def get_and_dump(subreddit, num_posts, keyword, lookback_days=360, use_s3=False):
-    print("Looking at {}".format(subreddit))
-    combined_submissions = []
+    def get_and_dump(self, subreddit): #def get_and_dump(subreddit, num_posts, keyword, lookback_days=360, use_s3=False):
+        print("Looking at {}".format(subreddit))
+        combined_submissions = []
 
-    for syn in ('advice', 'best', 'recommend'):
-        h_page = requests.get(
-            "http://api.pushshift.io/reddit/search/submission/?subreddit={}&title={}&before={}d&size={}&sort_type=num_comments".format(
-                subreddit, syn, lookback_days, num_posts
+        # Get all submissions which are advice-like, associated comments will be analyzed
+        for syn in ('advice', 'best', 'recommend'):
+            h_page = requests.get(
+                "http://api.pushshift.io/reddit/search/submission/?subreddit={}&title={}&before={}d&size={}&sort_type=num_comments".format(
+                    subreddit, syn, self.lookback, self.num_posts
+                )
+            )
+
+            submissions_data = json.loads(h_page.text)
+
+            combined_submissions.extend(submissions_data['data'])
+        
+        submissions_data = combined_submissions
+
+        submission_ids = get_submission_ids(submissions_data, subreddit)
+        print(
+            "Submissions from {}: {} ({})".format(
+                subreddit, len(submission_ids), len(submissions_data)
             )
         )
+        # Iterate thru submissions, get associated comments
+        comment_list = []
+        for submission_id in submission_ids:
+            comments = get_assoc_comments(submission_id)
+            comment_list.append(comments)
 
-        # Get all relevant submissions, verify subreddit
-        submissions_data = json.loads(h_page.text)
+        # Save submissions for later
+        posts = (submissions_data, comment_list)
 
-        combined_submissions.extend(submissions_data['data'])
-    
-    submissions_data = combined_submissions
+        if self.use_s3:
+            comment_file = save_posts_to_S3(posts, subreddit, self.lookback)
+        else:
+            comment_file = save_posts_locally(posts, subreddit, self.lookback)
 
-    submission_ids = get_submission_ids(submissions_data, subreddit)
-    print(
-        "Submissions from {}: {} ({})".format(
-            subreddit, len(submission_ids), len(submissions_data)
-        )
-    )
-    # Iterate thru submissions, get associated comments
-    comment_list = []
-    for submission_id in submission_ids:
-        comments = get_assoc_comments(submission_id)
-        comment_list.append(comments)
+        return comment_file, comment_list
 
-    # Save submissions for later
-    posts = (submissions_data , comment_list)
 
-    if use_s3:
-        comment_file = save_posts_to_S3(posts, subreddit, lookback_days)
-    else:
-        comment_file = save_posts_locally(posts, subreddit, lookback_days)
 
-    return comment_file, comment_list
-
+### Helper functions for getting and saving posts ###
 
 def get_assoc_comments(subm_id):
     """ For a submission ID, request a JSON of associated comments."""
     cs_page = requests.get(
         "https://api.pushshift.io/reddit/search/comment/?link_id={}".format(subm_id)
     )
-
-    comments = json.loads(cs_page.text)["data"]
+    try:
+        comments = json.loads(cs_page.text)["data"]
+    except ValueError:
+        comments = [] # Trying to decode from None (JSONDecodeError)
     return comments
 
 
@@ -152,7 +152,6 @@ def save_posts_locally(posts, subreddit, lookback_days, dumppath="../data/"):
 def save_posts_to_S3(
     posts, subreddit, lookback_days, bucket_name="crowdsourced-data-reddit"
 ):
-    # Save posts to S3
     file_name = "{}/{}_{}.{}".format(
         "submission_data", subreddit, lookback_days, "json"
     )
