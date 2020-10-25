@@ -15,16 +15,17 @@ Stack: Python, AWS (EC2 & S3), JSON.
 NLP Models: [SpaCy](https://github.com/explosion/spaCy) [Named Entity Recognition], [VADER](https://github.com/cjhutto/vaderSentiment) [Sentiment Analysis].    
 Packages: Requests, Pandas, Fuzzywuzzy, Streamlit...  
 
+![CrowdRank App](static/CrowdRank_headphones.gif)
+
+This project was completed in 4 weeks as an AI Fellow at Insight Data Science, more information in [these slides](https://docs.google.com/presentation/d/1WD1oYS2C91xizfJuv1zhWhu-tA53MBWnLTIYSArWMA8/edit?usp=sharing).
+
 ## Data
 Queried with [Pushshift's API](https://reddit-api.readthedocs.io/en/latest/) which indexes over 4 billion comments, dating back to 2007.  
 
-For the web app, comment and post data is stored on S3, s.t. if data already exists, we just run interpret and process the results into
-a ranking.   
+For the web app, the comment and post data is stored on S3, otherwise it is stored locally. Currently, brand rankings exist for 9 products, which are inferred from 35K+ comments and almost 20 subreddits.
 
 ## Motivation
 210 million Americans shop online every year and 80% of them do research before purchasing an item. There 1000s of products in the same category (e.g. Wireless Headphones) with over 4 stars, making it almost impossible to sort through them. What if we could tap into the collective knowledge of communities, to help users quickly choose the best brands and products?
-
-This web app and package tackle that problem, by using NLP to intelligently mine posts and get a simple ranking of brands by *Community Score* and *Popularity*. 
 
 ## Web app
 Run the web app from inside scripts:  
